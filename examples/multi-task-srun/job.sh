@@ -1,0 +1,32 @@
+#!/bin/bash
+#SBATCH --account ffnr0871-rfi-test
+#SBATCH --qos rfi
+#SBATCH --time 30
+#SBATCH --nodes 1
+#SBATCH --ntasks 1
+#SBATCH --cpus-per-task 36
+#SBATCH --gpus-per-task 0
+#SBATCH -o logs/%j-%x.out
+
+# Load a bare-bones environment that will support CUDA enabled MPI within singularity containers
+module purge
+module load baskerville
+module load bask-apps/live
+module load OpenMPI/4.0.5-gcccuda-2020b
+
+# Enable verbose logging of job script commands
+set -x
+
+# Root directory for project storage
+export PROJECT_DIR="/bask/projects/f/ffnr0871-rfi-test/pje39613"
+
+# Place singularity cache dir in project storage since /home/ is limited to 20GB per user
+# Singularity can use up a LOT of cache space when converting OCI images to singularity images!
+export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
+
+# Use container uri with hash digest so that the correct container version gets used even if the job queues
+# for a long time and you have pushed a newer version of the container in the meantime for future experiments
+export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:9fd187a21db8e0225738f434670197832083118e504a60953e726fdd7a6fdb85"
+
+# Execute the parallel job
+srun singularity run --nv $CONTAINER python multi-task-srun.py
