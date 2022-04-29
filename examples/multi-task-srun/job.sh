@@ -2,10 +2,10 @@
 #SBATCH --account ffnr0871-rfi-test
 #SBATCH --qos rfi
 #SBATCH --time 5
-#SBATCH --nodes 1
+#SBATCH --nodes 2
 #SBATCH --ntasks 2
 #SBATCH --cpus-per-task 36
-#SBATCH --gpus-per-task 2
+#SBATCH --gpus-per-task 1
 
 # Load a bare-bones environment that will support CUDA enabled MPI within singularity containers
 module purge
