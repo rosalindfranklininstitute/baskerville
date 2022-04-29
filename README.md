@@ -7,7 +7,7 @@ It also includes the `sgit` utility script which is implemented entirely in BASH
 `sgit` allows you submit a cluster job to `sbatch` directly from a specific commit of a git repo.
 ```
 sgit -d ~/jobs -r git@github.com:rosalindfranklininstitute/baskerville.git \
-     -c 61e3f7875dcc4144f81d3c6855423363da701f91 \
+     -c d126b7962d434cdce5778cca47b048b84d5f6d3e \
      -j examples/multi-task-srun/job.sh
 ```
 
@@ -97,6 +97,6 @@ chmod +x ~/sgit
 
 ```
 sgit -d ~/jobs -r git@github.com:rosalindfranklininstitute/baskerville.git \
-     -c 61e3f7875dcc4144f81d3c6855423363da701f91 \
+     -c d126b7962d434cdce5778cca47b048b84d5f6d3e \
      -j examples/multi-task-srun/job.sh
 ```
