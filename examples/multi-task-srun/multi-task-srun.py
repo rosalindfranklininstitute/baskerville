@@ -103,6 +103,26 @@ try:
     for line in nvidia_smi().split('\n'):
         logger.info(f'nvidia-smi | {line}')
 
+    # Initialize MPI
+    from mpi4py import MPI
+    MPI_COMM_WORLD = MPI.COMM_WORLD
+
+    # Do a broadcast from each node to the other nodes to test communication
+    MPI.COMM_WORLD.barrier()
+    for idx in range(MPI.COMM_WORLD.Get_size()):
+
+        xs = -np.ones((MPI.COMM_WORLD.Get_size(),))
+        if idx == MPI.COMM_WORLD.Get_rank():
+            xs[:] = idx
+            logger.info(f'BCAST ROOT {xs}')
+
+        MPI.COMM_WORLD.barrier()
+        logger.info(f'BEFORE BCAST {xs}')
+
+        xs = MPI.COMM_WORLD.bcast(xs, root=idx)
+
+        logger.info(f' AFTER BCAST {xs}')
+
 except Exception as ex:
     # Catch any top level exceptions and ensure they are logged
     logger.exception(ex, exc_info=True)
