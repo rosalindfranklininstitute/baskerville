@@ -1,0 +1,139 @@
+#!/bin/bash
+
+function usage() {
+  echo "sgit -r REPO_URL -c COMMIT -j JOB_SCRIPT [-d DIRECTORY]"
+  echo
+  echo "  -r REPO_URL       git@server:user/repo.git style git clone string."
+  echo "  -c COMMIT         Full SHA hash for the target commit. Must be the full hash."
+  echo "  -j JOB_SCRIPT     Path to the job script relative to the root of the git repo."
+  echo "  -d DIRECTORY      Path to root directory to clone the git repo in."
+  echo "  -v                Verbose output."
+  echo
+  echo "                    The git repo will be cloned into a unique directory:"
+  echo "                    <DIRECTORY>/<REPO_NAME>/<COMMIT>/<UTC>"
+  echo
+  echo "                    sbatch is executed in the cloned directory and overrides the job name."
+  echo '                    sbatch --job-name "<REPO_NAME>/<COMMIT>/<UTC>" $SGIT_SBATCH_ARGS "<JOB_SCRIPT>"'
+  echo
+  echo "                    Arguments can be passed as environment variables using the SGIT_ prefix:"
+  echo "                    The additional environment variable SGIT_SBATCH_ARGS passes any additional"
+  echo "                    argument string to sbatch."
+  echo
+  echo "                    export SGIT_REPO_URL='git@server:user/repo.git'"
+  echo "                    export SGIT_COMMIT='61e3f7875dcc4144f81d3c6855423363da701f91'"
+  echo "                    export SGIT_JOB_SCRIPT='job.sh'"
+  echo "                    export SGIT_DIRECTORY='/path/to/clone'"
+  echo "                    export SGIT_SBATCH_ARGS='--test-only'"
+  echo "                    export SGIT_VERBOSE=1"
+  echo "                    sgit"
+  echo
+}
+
+while getopts "hvr:c:d:j:" opt; do
+    case $opt in
+        h)  usage; exit 0;;
+        r)  SGIT_REPO_URL=${OPTARG};;
+        c)  SGIT_COMMIT=${OPTARG};;
+        d)  SGIT_DIRECTORY=${OPTARG};;
+        j)  SGIT_JOB_SCRIPT=${OPTARG};;
+        v)  SGIT_VERBOSE=1;;
+        \?) exit 1;;
+        :)  exit 1;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+########################################################################################################################
+# Validate arguments
+
+# SBATCH_ARGS env to inject into sbatch call
+if [ -z "$SGIT_SBATCH_ARGS" ]; then
+    SGIT_SBATCH_ARGS=""
+fi
+
+# DIRECTORY to clone into defaults to PWD
+if [ -z "$SGIT_DIRECTORY" ]; then
+    SGIT_DIRECTORY="`pwd`"
+fi
+
+# SGIT_REPO_URL to clone must be a git@ format url
+if [ -z "$SGIT_REPO_URL" ]; then
+    usage
+    echo 'Missing -r REPO_URL' >&2
+    exit 1
+fi
+REPO_URL_REGEX="git@.+/([^/]+)\.git"
+if [[ $SGIT_REPO_URL =~ $REPO_URL_REGEX ]]; then
+    REPO_NAME="${BASH_REMATCH[1]}"
+else
+    usage
+    echo "''' $SGIT_REPO_URL ''' doesn't match ''' $REPO_URL_REGEX '''" >&2
+    exit 1
+fi
+
+# COMMIT to clone must be a valid SHA1 hash
+if [ -z "$SGIT_COMMIT" ]; then
+    usage
+    echo 'Missing -c COMMIT' >&2
+    exit 1
+fi
+COMMIT_REGEX="\b[0-9a-f]{5,40}\b"
+if ! [[ $SGIT_COMMIT =~ $COMMIT_REGEX ]]; then
+    echo "''' $SGIT_COMMIT ''' doesn't match ''' $COMMIT_REGEX '''" >&2
+    exit 1
+fi
+
+# JOB_SCRIPT relative to the root of the git repo to submit to sbatch
+if [ -z "$SGIT_JOB_SCRIPT" ]; then
+    SGIT_JOB_SCRIPT="job.sh"
+fi
+
+# JOB_UTC the timestamp the git repo was cloned and submitted at
+JOB_UTC="`date +%s`"
+
+# JOB_NAME for sbatch to force
+JOB_NAME="$REPO_NAME/$SGIT_COMMIT/$JOB_UTC"
+
+# JOB_DIR should be a unique empty directory for this specific job submission of a specific commit
+JOB_DIR="$SGIT_DIRECTORY/$JOB_NAME"
+if ! [ -z "$(ls -A $JOB_DIR 2>/dev/null)" ]; then
+    usage
+    echo "JOB_DIR is not empty ''' $JOB_DIR '''" >&2
+    exit 1
+fi
+
+########################################################################################################################
+# Debug variables
+
+if [[ $SGIT_VERBOSE -eq 1 ]]; then
+    echo "DIRECTORY   = $SGIT_DIRECTORY"
+    echo "JOB_DIR     = $JOB_DIR"
+    echo "JOB_NAME    = $JOB_NAME"
+    echo "JOB_SCRIPT  = $SGIT_JOB_SCRIPT"
+    echo "JOB_UTC     = $JOB_UTC"
+    echo "REPO_URL    = $SGIT_REPO_URL"
+    echo "REPO_NAME   = $REPO_NAME"
+    echo "COMMIT      = $SGIT_COMMIT"
+    echo "SBATCH_ARGS = $SGIT_SBATCH_ARGS"
+    set -x
+fi
+
+########################################################################################################################
+# Clone and submit the job
+
+# Create the directory to clone the commit into
+mkdir -p $JOB_DIR
+cd $JOB_DIR
+
+# Clone only the target commit into the directory
+git init || exit 1
+git remote add origin $SGIT_REPO_URL || exit 1
+git fetch origin $SGIT_COMMIT || exit 1
+git reset --hard FETCH_HEAD || exit 1
+
+# Force the creation of a logs directory in the root of the git clone
+# The job script should point any output logs into this directory
+mkdir -p ./logs/
+
+# Execute the job script within the commit
+sbatch --chdir "$JOB_DIR" --job-name "$JOB_NAME" $SGIT_SBATCH_ARGS "$JOB_DIR/$SGIT_JOB_SCRIPT"
