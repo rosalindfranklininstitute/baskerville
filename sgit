@@ -131,9 +131,5 @@ git remote add origin $SGIT_REPO_URL || exit 1
 git fetch origin $SGIT_COMMIT || exit 1
 git reset --hard FETCH_HEAD || exit 1
 
-# Force the creation of a logs directory in the root of the git clone
-# The job script should point any output logs into this directory
-mkdir -p ./logs/
-
 # Execute the job script within the commit
 sbatch --chdir "$JOB_DIR" --job-name "$JOB_NAME" $SGIT_SBATCH_ARGS "$JOB_DIR/$SGIT_JOB_SCRIPT"

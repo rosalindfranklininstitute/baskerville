@@ -9,15 +9,15 @@ JOB_ID, JOB_NAME = os.environ['SLURM_JOB_ID'], os.environ['SLURM_JOB_NAME']
 WORLD_RANK, WORLD_SIZE = int(os.environ['SLURM_PROCID']), int(os.environ['SLURM_NTASKS'])
 
 # Dump env and nvidia-smi output for this task before trying to do anything incase of failure
-with open(f'logs/{JOB_ID}-{WORLD_RANK:04d}.env', 'w') as fp:
+with open(f'{JOB_ID}-{WORLD_RANK:04d}.env', 'w') as fp:
     subprocess.Popen(['env'], stdout=fp, stderr=fp).wait()
     fp.flush()
-with open(f'logs/{JOB_ID}-{WORLD_RANK:04d}.nvsmi', 'w') as fp:
+with open(f'{JOB_ID}-{WORLD_RANK:04d}.nvsmi', 'w') as fp:
     subprocess.Popen(['/usr/bin/nvidia-smi'], stdout=fp, stderr=fp).wait()
     fp.flush()
 
 # Start a background process to log nvidia-smi as a csv file for global performance monitoring
-with open(f'logs/{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
+with open(f'{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
     subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--loop=1',
                       '--query-gpu=timestamp,uuid,power.draw,memory.used,memory.free,memory.total,'
                                   'temperature.gpu,temperature.memory,utilization.gpu,utilization.memory'], stdout=fp)
@@ -47,7 +47,7 @@ stdout_handler.setFormatter(formatter)
 logger.addHandler(stdout_handler)
 
 # Mirror logging to unique output file for this SLURM job and MPI rank
-file_handler = logging.FileHandler(f'logs/{JOB_ID}-{WORLD_RANK:04d}.log')
+file_handler = logging.FileHandler(f'{JOB_ID}-{WORLD_RANK:04d}.log')
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
