@@ -3,7 +3,7 @@
 #SBATCH --qos rfi
 #SBATCH --time 5
 #SBATCH --nodes 1
-#SBATCH --ntasks 1
+#SBATCH --ntasks 2
 #SBATCH --cpus-per-task 36
 #SBATCH --gpus-per-task 1
 
