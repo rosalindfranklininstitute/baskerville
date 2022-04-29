@@ -9,18 +9,24 @@ JOB_ID, JOB_NAME = os.environ['SLURM_JOB_ID'], os.environ['SLURM_JOB_NAME']
 WORLD_RANK, WORLD_SIZE = int(os.environ['SLURM_PROCID']), int(os.environ['SLURM_NTASKS'])
 
 # Dump env and nvidia-smi output for this task before trying to do anything incase of failure
-with open(f'logs/{JOB_ID}-{WORLD_RANK:04d}.env', 'w') as fp:
-    subprocess.Popen(['env'], stdout=fp, stderr=fp).wait()
-    fp.flush()
-with open(f'logs/{JOB_ID}-{WORLD_RANK:04d}.nvsmi', 'w') as fp:
-    subprocess.Popen(['/usr/bin/nvidia-smi'], stdout=fp, stderr=fp).wait()
-    fp.flush()
+if "--log-env" in sys.argv:
+    sys.argv.remove("--log-env")
+    os.makedirs('logs/env', exist_ok=True)
+    with open(f'logs/env/{JOB_ID}-{WORLD_RANK:04d}.env', 'w') as fp:
+        subprocess.Popen(['env'], stdout=fp, stderr=fp).wait()
+        fp.flush()
+    with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi', 'w') as fp:
+        subprocess.Popen(['/usr/bin/nvidia-smi'], stdout=fp, stderr=fp).wait()
+        fp.flush()
 
 # Start a background process to log nvidia-smi as a csv file for global performance monitoring
-with open(f'logs/{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
-    subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--loop=1',
-                      '--query-gpu=timestamp,uuid,power.draw,memory.used,memory.free,memory.total,'
-                                  'temperature.gpu,temperature.memory,utilization.gpu,utilization.memory'], stdout=fp)
+if "--log-nvsmi" in sys.argv:
+    sys.argv.remove("--log-nvsmi")
+    os.makedirs('logs/nvsmi', exist_ok=True)
+    with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
+        subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--loop=1',
+                          '--query-gpu=timestamp,uuid,power.draw,memory.used,memory.free,memory.total,'
+                                       'temperature.gpu,temperature.memory,utilization.gpu,utilization.memory'], stdout=fp)
 
 class MPIFilter(logging.Filter):
     # Filter to inject MPI rank and job information into logging output
