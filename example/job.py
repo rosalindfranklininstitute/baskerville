@@ -131,6 +131,27 @@ try:
 
     logger.info(f' AFTER MPI TEST')
 
+    # Must import mpi4jax after jax
+    # Use cloned JAX communicator exclusively for JAX to ensure no deadlocks from
+    # asynchronous execution compared to surrounding mpi4py communications.
+    import mpi4jax
+    JAX_COMM_WORLD = MPI_COMM_WORLD.Clone()
+
+    # TODO add pmap to example function to utilize multiple local GPUs (currently only uses GPU 0)
+    # Create a JAX function that will worth with mpi4jax without causing deadlocks
+    @jax.jit
+    def test_mpi4jax(xs):
+        xs_sum, _ = mpi4jax.allreduce(xs, op=MPI.SUM, comm=JAX_COMM_WORLD)
+        return xs_sum
+
+    # Create input array for this task instance
+    xs = jnp.arange(JAX_COMM_WORLD.Get_size()) + JAX_COMM_WORLD.Get_rank()
+    logger.info(f'BEFORE ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+
+    # Run the JAX function which includes mpi4jax communication
+    xs = test_mpi4jax(xs)
+    logger.info(f' AFTER ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+
 except Exception as ex:
     # Catch any top level exceptions and ensure they are logged
     logger.exception(ex, exc_info=True)
