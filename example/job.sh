@@ -2,8 +2,8 @@
 #SBATCH --account ffnr0871-rfi-test
 #SBATCH --qos rfi
 #SBATCH --time 5
-#SBATCH --nodes 1
-#SBATCH --ntasks-per-node 2
+#SBATCH --nodes 2
+#SBATCH --ntasks-per-node 1
 #SBATCH --cpus-per-task 36
 #SBATCH --gpus-per-task 0
 
