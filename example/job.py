@@ -97,15 +97,17 @@ try:
 
     # Create input array for this task instance
     xs = jnp.arange(WORLD_SIZE) + WORLD_RANK
-    logger.info(f'BEFORE LOCAL MATMUL | xs {xs.device()} {xs.shape} {xs}')
+    logger.info(f'BEFORE LOCAL JAX TEST | xs {xs.device()} {xs.shape} {xs}')
 
     # Run the JAX function which operates locally
     xs = test_jax(xs)
-    logger.info(f' AFTER LOCAL MATMUL | xs {xs.device()} {xs.shape} {xs}')
+    logger.info(f' AFTER LOCAL JAX TEST | xs {xs.device()} {xs.shape} {xs}')
 
     # Log nvidia-smi to ensure task instances got the correct GPU bindings
     for line in nvidia_smi().split('\n'):
         logger.info(f'nvidia-smi | {line}')
+
+    logger.info(f'BEFORE MPI TEST')
 
     # Initialize MPI
     from mpi4py import MPI
@@ -126,6 +128,8 @@ try:
         xs = MPI.COMM_WORLD.bcast(xs, root=idx)
 
         logger.info(f' AFTER BCAST {xs}')
+
+    logger.info(f' AFTER MPI TEST')
 
 except Exception as ex:
     # Catch any top level exceptions and ensure they are logged
