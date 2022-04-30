@@ -7,11 +7,11 @@ It also includes the `sgit` utility script which is implemented entirely in BASH
 `sgit` allows you submit a cluster job to `sbatch` directly from a specific commit of a git repo.
 ```
 sgit -d ~/jobs -r git@github.com:rosalindfranklininstitute/baskerville.git \
-     -c d126b7962d434cdce5778cca47b048b84d5f6d3e \
-     -j examples/multi-task-srun/job.sh
+     -c d74379faf9ca56e76c7c4b7ea49305275859519b \
+     -j example/job.sh
 ```
 
-The above command will create a directory `~/jobs/baskerville/61e3f7875dcc4144f81d3c6855423363da701f91/<UTC>` and submit `examples/multi-task-srun/job.sh` to sbatch with job name `baskerville/61e3f7875dcc4144f81d3c6855423363da701f91/<UTC>`.
+The above command will create a directory `~/jobs/baskerville/d74379faf9ca56e76c7c4b7ea49305275859519b/<UTC>` and submit `example/job.sh` to sbatch with job name `baskerville/d74379faf9ca56e76c7c4b7ea49305275859519b/<UTC>`.
 
 ---
 
@@ -97,6 +97,6 @@ chmod +x ~/sgit
 
 ```
 sgit -d ~/jobs -r git@github.com:rosalindfranklininstitute/baskerville.git \
-     -c d126b7962d434cdce5778cca47b048b84d5f6d3e \
-     -j examples/multi-task-srun/job.sh
+     -c d74379faf9ca56e76c7c4b7ea49305275859519b \
+     -j example/job.sh
 ```
