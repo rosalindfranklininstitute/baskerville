@@ -4,7 +4,7 @@
 #SBATCH --mail-user joss.whittle@rfi.ac.uk
 #SBATCH --mail-type ALL
 #SBATCH --time 5
-#SBATCH --nodes 2
+#SBATCH --nodes 3
 #SBATCH --ntasks-per-node 2
 #SBATCH --cpus-per-task 36
 #SBATCH --gpus-per-node 2

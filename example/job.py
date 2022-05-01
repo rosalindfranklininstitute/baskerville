@@ -1,7 +1,9 @@
-import os, sys, time
+import os, sys, time, signal
 import subprocess
 import logging
 import socket
+
+os.setpgrp()
 
 # Decode the SLURM job information and the MPI rank of this task instance
 HOSTNAME = socket.gethostname()
@@ -176,4 +178,5 @@ except Exception as ex:
 
 # Keep process alive for a bit at the end of the job to ensure nvidia-smi process binding is reported accurately
 time.sleep(10)
+os.killpg(0, signal.SIGKILL)
 logger.debug('Halting...')
