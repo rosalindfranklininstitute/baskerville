@@ -172,11 +172,15 @@ try:
     xs = test_mpi4jax(xs)
     logger.info(f' AFTER JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
 
+    MPI_COMM_WORLD.barrier()
+    MPI.Finalize()
+
 except Exception as ex:
     # Catch any top level exceptions and ensure they are logged
     logger.exception(ex, exc_info=True)
 
 # Keep process alive for a bit at the end of the job to ensure nvidia-smi process binding is reported accurately
 time.sleep(10)
+logger.debug('Sending SIGKILL...')
 os.killpg(0, signal.SIGKILL)
 logger.debug('Halting...')
