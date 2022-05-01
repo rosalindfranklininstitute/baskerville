@@ -7,7 +7,7 @@
 #SBATCH --nodes 2
 #SBATCH --ntasks-per-node 2
 #SBATCH --cpus-per-task 36
-#SBATCH --gpu-bind=verbose,per_task:1
+#SBATCH --gpu-bind=per_task:1
 
 # Load a bare-bones environment that will support CUDA enabled MPI within singularity containers
 module purge
