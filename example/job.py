@@ -84,6 +84,16 @@ try:
     logger.info(f'CUDA_VISIBLE_DEVICES {CUDA_VISIBLE_DEVICES}')
     assert len(CUDA_VISIBLE_DEVICES) == len(set(CUDA_VISIBLE_DEVICES))
 
+    if len(CUDA_VISIBLE_DEVICES) > 0:
+        # Assert that there are an even number of GPUs for local tasks on this node
+        assert (len(CUDA_VISIBLE_DEVICES) % LOCAL_SIZE) == 0
+
+        # Determine the GPUs that should be used for this local task instance
+        GPUS_PER_TASK = len(CUDA_VISIBLE_DEVICES) // LOCAL_SIZE
+        CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES[(LOCAL_RANK*GPUS_PER_TASK):((LOCAL_RANK+1)*GPUS_PER_TASK)]
+        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, CUDA_VISIBLE_DEVICES))
+        logger.info(f'Setting CUDA_VISIBLE_DEVICES to {CUDA_VISIBLE_DEVICES}')
+
     for line in nvidia_smi().split('\n'):
         logger.info(f'nvidia-smi | {line}')
 
