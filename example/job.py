@@ -16,14 +16,18 @@ if "--log-env" in sys.argv:
     with open(f'logs/env/{JOB_ID}-{WORLD_RANK:04d}.env', 'w') as fp:
         subprocess.Popen(['env'], stdout=fp, stderr=fp).wait()
         fp.flush()
-    with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi', 'w') as fp:
-        subprocess.Popen(['/usr/bin/nvidia-smi'], stdout=fp, stderr=fp).wait()
-        fp.flush()
 
 # Start a background process to log nvidia-smi as a csv file for global performance monitoring
 if "--log-nvsmi" in sys.argv:
     sys.argv.remove("--log-nvsmi")
     os.makedirs('logs/nvsmi', exist_ok=True)
+
+    # Log human readable nvsmi
+    with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi', 'w') as fp:
+        subprocess.Popen(['/usr/bin/nvidia-smi'], stdout=fp, stderr=fp).wait()
+        fp.flush()
+
+    # Set a background process logging nvsmi in csv format in 1 second intervals
     with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
         subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--loop=1',
                           '--query-gpu=timestamp,uuid,power.draw,memory.used,memory.free,memory.total,'
@@ -107,6 +111,8 @@ try:
     for line in nvidia_smi().split('\n'):
         logger.info(f'nvidia-smi | {line}')
 
+    ####################################################################################################################
+
     logger.info(f'BEFORE MPI TEST')
 
     # Initialize MPI
@@ -131,6 +137,8 @@ try:
 
     logger.info(f' AFTER MPI TEST')
 
+    ####################################################################################################################
+
     # Must import mpi4jax after jax
     # Use cloned JAX communicator exclusively for JAX to ensure no deadlocks from
     # asynchronous execution compared to surrounding mpi4py communications.
@@ -146,11 +154,11 @@ try:
 
     # Create input array for this task instance
     xs = jnp.arange(JAX_COMM_WORLD.Get_size()) + JAX_COMM_WORLD.Get_rank()
-    logger.info(f'BEFORE ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+    logger.info(f'BEFORE JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
 
     # Run the JAX function which includes mpi4jax communication
     xs = test_mpi4jax(xs)
-    logger.info(f' AFTER ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+    logger.info(f' AFTER JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
 
 except Exception as ex:
     # Catch any top level exceptions and ensure they are logged

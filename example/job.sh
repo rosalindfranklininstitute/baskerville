@@ -1,6 +1,8 @@
 #!/bin/bash
 #SBATCH --account ffnr0871-rfi-test
 #SBATCH --qos rfi
+#SBATCH --mail-user joss.whittle@rfi.ac.uk
+#SBATCH --mail-type ALL
 #SBATCH --time 5
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 4
