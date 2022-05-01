@@ -1,19 +1,30 @@
 #!/bin/bash
 
 function usage() {
-  echo "sgit -r REPO_URL -c COMMIT -j JOB_SCRIPT [-d DIRECTORY]"
+  echo "sgit -r REPO_URL -c COMMIT -j JOB_SCRIPT [-n JOB_NAME] [-l LOGS_PATTERN] [-d DIR] [-v]"
   echo
   echo "  -r REPO_URL       git@server:user/repo.git style git clone string."
+  echo
   echo "  -c COMMIT         Full SHA hash for the target commit. Must be the full hash."
+  echo
   echo "  -j JOB_SCRIPT     Path to the job script relative to the root of the git repo."
-  echo "  -d DIRECTORY      Path to root directory to clone the git repo in."
+  echo "                    Defaults to [job.sh]."
+  echo
+  echo "  -n JOB_NAME       Pattern to use for the job name and directory."
+  echo "                    Accepts format specifiers %r=REPO_NAME %t=UTC %c=COMMIT."
+  echo "                    Defaults to [%r/%t-%c]."
+  echo
+  echo "  -l LOGS_PATTERN   Path to use for sbatch --output and --error."
+  echo "                    Defaults to [logs/slurm/%j-%t]."
+  echo "                    Format specifiers are processed by sbatch:"
+  echo "                    https://slurm.schedmd.com/sbatch.html#SECTION_%3CB%3Efilename-pattern%3C/B%3E"
+  echo
+  echo "  -d DIR            Path to root directory to clone the git repo in. Defaults to [.]."
+  echo
   echo "  -v                Verbose output."
   echo
-  echo "                    The git repo will be cloned into a unique directory:"
-  echo "                    <DIRECTORY>/<REPO_NAME>/<COMMIT>/<UTC>"
-  echo
-  echo "                    sbatch is executed in the cloned directory and overrides the job name."
-  echo '                    sbatch --job-name "<REPO_NAME>/<COMMIT>/<UTC>" $SGIT_SBATCH_ARGS "<JOB_SCRIPT>"'
+  echo "                    By default, the git repo will be cloned into a unique directory:"
+  echo "                    <DIR>/<REPO_NAME>/<UTC>-<COMMIT>"
   echo
   echo "                    Arguments can be passed as environment variables using the SGIT_ prefix:"
   echo "                    The additional environment variable SGIT_SBATCH_ARGS passes any additional"
@@ -22,21 +33,26 @@ function usage() {
   echo "                    export SGIT_REPO_URL='git@server:user/repo.git'"
   echo "                    export SGIT_COMMIT='61e3f7875dcc4144f81d3c6855423363da701f91'"
   echo "                    export SGIT_JOB_SCRIPT='job.sh'"
-  echo "                    export SGIT_DIRECTORY='/path/to/clone'"
+  echo "                    export SGIT_JOB_NAME='%r/%t-%c'"
+  echo "                    export SGIT_DIR='.'"
   echo "                    export SGIT_SBATCH_ARGS='--test-only'"
+  echo "                    export SGIT_LOGS_PATTERN='logs/slurm/%j-%t'"
   echo "                    export SGIT_VERBOSE=1"
   echo "                    sgit"
   echo
 }
 
-while getopts "hvr:c:d:j:" opt; do
+VERBOSE=0
+while getopts "hvr:c:j:n:d:l:" opt; do
     case $opt in
         h)  usage; exit 0;;
         r)  SGIT_REPO_URL=${OPTARG};;
         c)  SGIT_COMMIT=${OPTARG};;
-        d)  SGIT_DIRECTORY=${OPTARG};;
+        d)  SGIT_DIR=${OPTARG};;
         j)  SGIT_JOB_SCRIPT=${OPTARG};;
-        v)  SGIT_VERBOSE=1;;
+        n)  SGIT_JOB_NAME=${OPTARG};;
+        l)  SGIT_LOGS_PATTERN=${OPTARG};;
+        v)  VERBOSE=$((VERBOSE+1));;
         \?) exit 1;;
         :)  exit 1;;
     esac
@@ -46,17 +62,33 @@ shift $(($OPTIND - 1))
 ########################################################################################################################
 # Validate arguments
 
+# VERBOSE print extra output
+if ! [ -z "$SGIT_VERBOSE" ]; then
+    if [[ $VERBOSE -eq 0 ]]; then
+        VERBOSE="$SGIT_VERBOSE"
+    fi
+fi
+
+GIT_FETCH_ARGS="--quiet"
+DEGUG=/dev/null
+if [[ $VERBOSE -ge 3 ]]; then
+    GIT_FETCH_ARGS=""
+    DEGUG=/dev/stdout
+fi
+
 # SBATCH_ARGS env to inject into sbatch call
 if [ -z "$SGIT_SBATCH_ARGS" ]; then
     SGIT_SBATCH_ARGS=""
 fi
+SBATCH_ARGS="$SGIT_SBATCH_ARGS"
 
-# DIRECTORY to clone into defaults to PWD
-if [ -z "$SGIT_DIRECTORY" ]; then
-    SGIT_DIRECTORY="`pwd`"
+# DIR to clone into defaults to PWD
+if [ -z "$SGIT_DIR" ]; then
+    SGIT_DIR="`pwd`"
 fi
+ROOT_DIR="$(realpath $SGIT_DIR)"
 
-# SGIT_REPO_URL to clone must be a git@ format url
+# REPO_URL to clone must be a git@ format url
 if [ -z "$SGIT_REPO_URL" ]; then
     usage
     echo 'Missing -r REPO_URL' >&2
@@ -67,9 +99,10 @@ if [[ $SGIT_REPO_URL =~ $REPO_URL_REGEX ]]; then
     REPO_NAME="${BASH_REMATCH[1]}"
 else
     usage
-    echo "''' $SGIT_REPO_URL ''' doesn't match ''' $REPO_URL_REGEX '''" >&2
+    echo "[$SGIT_REPO_URL] doesn't match [$REPO_URL_REGEX]" >&2
     exit 1
 fi
+REPO_URL="$SGIT_REPO_URL"
 
 # COMMIT to clone must be a valid SHA1 hash
 if [ -z "$SGIT_COMMIT" ]; then
@@ -79,7 +112,27 @@ if [ -z "$SGIT_COMMIT" ]; then
 fi
 COMMIT_REGEX="\b[0-9a-f]{5,40}\b"
 if ! [[ $SGIT_COMMIT =~ $COMMIT_REGEX ]]; then
-    echo "''' $SGIT_COMMIT ''' doesn't match ''' $COMMIT_REGEX '''" >&2
+    echo "[$SGIT_COMMIT] doesn't match [$COMMIT_REGEX]" >&2
+    exit 1
+fi
+COMMIT="$SGIT_COMMIT"
+
+# JOB_UTC the timestamp the git repo was cloned and submitted at
+JOB_UTC="`date +%s`"
+
+# JOB_NAME for sbatch to force, expands format specifiers
+if [ -z "$SGIT_JOB_NAME" ]; then
+    SGIT_JOB_NAME="%r/%t-%c"
+fi
+JOB_NAME="${SGIT_JOB_NAME/\%r/"$REPO_NAME"}"
+JOB_NAME="${JOB_NAME/\%t/"$JOB_UTC"}"
+JOB_NAME="${JOB_NAME/\%c/"$COMMIT"}"
+
+# JOB_DIR should be a unique empty directory for this specific job submission of a specific commit
+JOB_DIR="$ROOT_DIR/$JOB_NAME"
+if ! [ -z "$(ls -A $JOB_DIR 2>/dev/null)" ]; then
+    usage
+    echo "JOB_DIR is not empty [$JOB_DIR]" >&2
     exit 1
 fi
 
@@ -87,34 +140,33 @@ fi
 if [ -z "$SGIT_JOB_SCRIPT" ]; then
     SGIT_JOB_SCRIPT="job.sh"
 fi
+JOB_SCRIPT="$JOB_DIR/$SGIT_JOB_SCRIPT"
 
-# JOB_UTC the timestamp the git repo was cloned and submitted at
-JOB_UTC="`date +%s`"
-
-# JOB_NAME for sbatch to force
-JOB_NAME="$REPO_NAME/$SGIT_COMMIT/$JOB_UTC"
-
-# JOB_DIR should be a unique empty directory for this specific job submission of a specific commit
-JOB_DIR="$SGIT_DIRECTORY/$JOB_NAME"
-if ! [ -z "$(ls -A $JOB_DIR 2>/dev/null)" ]; then
-    usage
-    echo "JOB_DIR is not empty ''' $JOB_DIR '''" >&2
-    exit 1
+# LOGS_PATH relative to the JOB_DIR to pass to sbatch's --ouput and --error flags
+if [ -z "$SGIT_LOGS_PATTERN" ]; then
+    SGIT_LOGS_PATTERN="logs/slurm/%j-%t"
 fi
+LOGS_PATTERN="$SGIT_LOGS_PATTERN"
+LOGS_PATH="$JOB_DIR/$LOGS_PATTERN"
+LOGS_DIR="$(dirname $LOGS_PATH)"
 
 ########################################################################################################################
 # Debug variables
 
-if [[ $SGIT_VERBOSE -eq 1 ]]; then
-    echo "DIRECTORY   = $SGIT_DIRECTORY"
-    echo "JOB_DIR     = $JOB_DIR"
-    echo "JOB_NAME    = $JOB_NAME"
-    echo "JOB_SCRIPT  = $SGIT_JOB_SCRIPT"
-    echo "JOB_UTC     = $JOB_UTC"
-    echo "REPO_URL    = $SGIT_REPO_URL"
-    echo "REPO_NAME   = $REPO_NAME"
-    echo "COMMIT      = $SGIT_COMMIT"
-    echo "SBATCH_ARGS = $SGIT_SBATCH_ARGS"
+if [[ $VERBOSE -ge 1 ]]; then
+    echo "ROOT_DIR     = $ROOT_DIR"
+    echo "JOB_DIR      = $JOB_DIR"
+    echo "JOB_NAME     = $JOB_NAME"
+    echo "JOB_SCRIPT   = $JOB_SCRIPT"
+    echo "JOB_UTC      = $JOB_UTC"
+    echo "REPO_URL     = $REPO_URL"
+    echo "REPO_NAME    = $REPO_NAME"
+    echo "COMMIT       = $COMMIT"
+    echo "SBATCH_ARGS  = $SBATCH_ARGS"
+    echo "LOGS_PATH    = $LOGS_PATH.(out|err)"
+    echo "VERBOSE      = $VERBOSE"
+fi
+if [[ $VERBOSE -ge 2 ]]; then
     set -x
 fi
 
@@ -126,10 +178,12 @@ mkdir -p $JOB_DIR
 cd $JOB_DIR
 
 # Clone only the target commit into the directory
-git init || exit 1
-git remote add origin $SGIT_REPO_URL || exit 1
-git fetch origin $SGIT_COMMIT || exit 1
-git reset --hard FETCH_HEAD || exit 1
+git init 1>$DEGUG || exit 1
+git remote add origin $REPO_URL 1>$DEGUG || exit 1
+git fetch origin $COMMIT $GIT_FETCH_ARGS 1>$DEGUG || exit 1
+git reset --hard FETCH_HEAD 1>$DEGUG || exit 1
 
 # Execute the job script within the commit
-sbatch --chdir "$JOB_DIR" --job-name "$JOB_NAME" $SGIT_SBATCH_ARGS "$JOB_DIR/$SGIT_JOB_SCRIPT"
+mkdir -p "$LOGS_DIR"
+sbatch --output "$LOGS_PATH.out" --error  "$LOGS_PATH.err" --chdir "$JOB_DIR" \
+       --job-name "$JOB_NAME" $SBATCH_ARGS "$JOB_SCRIPT"
