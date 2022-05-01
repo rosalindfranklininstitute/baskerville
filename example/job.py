@@ -1,9 +1,13 @@
-import os, sys, time, signal
+import os, sys, time, signal, ctypes
 import subprocess
 import logging
 import socket
 
-os.setpgrp()
+def _set_pdeathsig(sig=signal.SIGTERM):
+    def fn():
+        libc = ctypes.CDLL("libc.so.6")
+        return libc.prctl(1, sig)
+    return fn
 
 # Decode the SLURM job information and the MPI rank of this task instance
 HOSTNAME = socket.gethostname()
@@ -33,7 +37,8 @@ if "--log-nvsmi" in sys.argv:
     with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
         subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--loop=1',
                           '--query-gpu=timestamp,uuid,power.draw,memory.used,memory.free,memory.total,'
-                                       'temperature.gpu,temperature.memory,utilization.gpu,utilization.memory'], stdout=fp)
+                                       'temperature.gpu,temperature.memory,utilization.gpu,utilization.memory'],
+                         stdout=fp, preexec_fn=_set_pdeathsig())
 
 class MPIFilter(logging.Filter):
     # Filter to inject MPI rank and job information into logging output
@@ -181,6 +186,4 @@ except Exception as ex:
 
 # Keep process alive for a bit at the end of the job to ensure nvidia-smi process binding is reported accurately
 time.sleep(10)
-logger.debug('Sending SIGKILL...')
-os.killpg(0, signal.SIGKILL)
 logger.debug('Halting...')
