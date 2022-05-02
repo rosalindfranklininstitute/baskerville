@@ -4,10 +4,10 @@
 #SBATCH --mail-user joss.whittle@rfi.ac.uk
 #SBATCH --mail-type ALL
 #SBATCH --time 5
-#SBATCH --nodes 1
+#SBATCH --nodes 2
 #SBATCH --ntasks-per-node 1
 #SBATCH --cpus-per-task 36
-#SBATCH --gpus-per-node 0
+#SBATCH --gpus-per-node 2
 
 # Load a bare-bones environment that will support CUDA enabled MPI within singularity containers
 module purge

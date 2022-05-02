@@ -9,55 +9,75 @@ flags.DEFINE_bool('log_nvsmi', False, help='')
 flags.DEFINE_bool('log_env', False, help='')
 
 # Dataset flags
-flags.DEFINE_string('train_dataset', None, help='')
-flags.mark_flag_as_required('train_dataset')
-flags.DEFINE_string('val_dataset', None, help='')
-flags.mark_flag_as_required('val_dataset')
+flags.DEFINE_string('train_dataset', None, help='', required=True)
+flags.DEFINE_integer('train_dataset_mem_cache', 8192, help='', lower_bound=0)
+flags.DEFINE_integer('train_dataset_dsk_cache', 150000, help='', lower_bound=0)
+flags.DEFINE_integer('train_dataset_shuffle_seed', 42, help='', lower_bound=0)
+flags.DEFINE_integer('train_batch_size', 10000, help='')
+
+flags.DEFINE_string('val_dataset', None, help='', required=True)
+flags.DEFINE_integer('val_dataset_mem_cache', 8192, help='', lower_bound=0)
+flags.DEFINE_integer('val_dataset_dsk_cache', 150000, help='', lower_bound=0)
+flags.DEFINE_integer('val_batch_size', 10000, help='')
 
 # Training flags
-flags.DEFINE_integer('batch_size', 10000, help='')
-flags.DEFINE_integer('val_batch_size', 10000, help='')
 flags.DEFINE_float('learning_rate', 0.1, help='')
 flags.DEFINE_integer('random_seed', 42, help='')
 flags.DEFINE_integer('log_every', 100, help='')
 flags.DEFINE_integer('epochs', 90, help='')
 FLAGS = flags.FLAGS
 
-def task(argv, logger):
-
-    logger.info(f'Importing JAX')
+def task(argv, logger, MPI):
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
+    logger.info(f'Importing JAX')
     import jax
     import jax.numpy as jnp
     import numpy as np
+    JAX_LOCAL_DEVICES = jax.local_devices()
 
-    logger.info(f'Initializing MPI')
+    # Must tell tensorflow not to utilize the GPUs
+    logger.info(f'Importing Tensorflow')
+    import tensorflow as tf
+    tf.config.set_visible_devices([], 'GPU')
 
-    from mpi4py import MPI
+    logger.info(f'Importing mpi4jax')
     import mpi4jax
-    MPI_COMM_WORLD = MPI.COMM_WORLD
-    JAX_COMM_WORLD = MPI_COMM_WORLD.Clone()
+    JAX_COMM_WORLD = MPI.COMM_WORLD.Clone()
+
+    def preprocess_fn(input):
+        image = tf.cast(input['image'], tf.float32) / 255.
+        label = input['label']
+        return dict(image=image, label=label)
 
     import hub
+    hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True, memory_cache_size=FLAGS.train_dataset_mem_cache, local_cache_size=FLAGS.train_dataset_dsk_cache)
+    hub_ds_val   = hub.load(FLAGS.val_dataset,   read_only=True, memory_cache_size=FLAGS.val_dataset_mem_cache,   local_cache_size=FLAGS.val_dataset_dsk_cache)
 
-    ds_train = hub.load(FLAGS.train_dataset, read_only=True, memory_cache_size=8192, local_cache_size=150000)
-    ds_val   = hub.load(FLAGS.val_dataset,   read_only=True, memory_cache_size=8192, local_cache_size=150000)
+    ds_train = hub_ds_train.tensorflow()
+    ds_train = ds_train.shuffle(hub_ds_train.shape[0], seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
+                .map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
+                .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
+                .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
 
-    X = ds_train.images[0].numpy()
-    Y = ds_train.labels[0].numpy()
-    logger.info(f'X train {X.shape} {X.dtype} {X.min()} {X.max()}')
-    logger.info(f'Y train {Y.shape} {Y.dtype}')
+    ds_val   = hub_ds_val.tensorflow()
+    ds_val   = ds_val.map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
+                .batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
+                .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
 
-    X = ds_val.images[0].numpy()
-    Y = ds_val.labels[0].numpy()
-    logger.info(f'X val {X.shape} {X.dtype} {X.min()} {X.max()}')
-    logger.info(f'Y val {Y.shape} {Y.dtype}')
+    for index, batch in zip(range(5), iter(ds_train)):
+        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        X = np.array(batch['image'])
+        Y = np.array(batch['label'])
+        logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
+        logger.info(f'train label {Y.shape} {Y.dtype} {batch["label"]}')
 
-    logger.info(f'Finalizing MPI')
-
-    MPI_COMM_WORLD.barrier()
-    MPI.Finalize()
+    for index, batch in zip(range(5), iter(ds_val)):
+        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        X = np.array(batch['image'])
+        Y = np.array(batch['label'])
+        logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
+        logger.info(f'val label {Y.shape} {Y.dtype} {batch["label"]}')
 
 ########################################################################################################################
 # Everything below here is configuring logging output and selecting the correct GPUs for this task
@@ -114,6 +134,7 @@ def main(argv):
     logging.getLogger().handlers.clear()
     logger = logging.getLogger(f'{JOB_ID}-{WORLD_RANK:04d}')
     logger.setLevel(logging.DEBUG)
+    logger.handlers.clear()
     logger.addFilter(MPIFilter())
 
     # Format the logging to include the SLURM job and MPI ranks
@@ -135,9 +156,6 @@ def main(argv):
     logger.addHandler(file_handler)
 
     # Debug environment for this task instance
-    logger.debug(f'PATH {os.environ.get("PATH", "")}')
-    logger.debug(f'LD_LIBRARY_PATH {os.environ.get("LD_LIBRARY_PATH", "")}')
-
     CUDA_VISIBLE_DEVICES = sorted(map(int, filter(lambda y: len(y),
                            os.environ.get('CUDA_VISIBLE_DEVICES', '').split(','))))
     logger.info(f'CUDA_VISIBLE_DEVICES {CUDA_VISIBLE_DEVICES}')
@@ -156,10 +174,19 @@ def main(argv):
     log_nvidia_smi(logger)
 
     try:
-        logger.debug('Starting...')
-        task(argv=argv, logger=logger)
-        time.sleep(10)
-        logger.debug('Halting...')
+        logger.debug(f'Initializing MPI')
+        from mpi4py import MPI
+        MPI.COMM_WORLD.barrier()
+
+        logger.debug('Starting task...')
+        task(argv=argv, logger=logger, MPI=MPI)
+        time.sleep(5)
+        logger.debug('Halting task...')
+
+        logger.debug(f'Finalizing MPI')
+        MPI.COMM_WORLD.barrier()
+        MPI.Finalize()
+
     except Exception as ex:
         # Catch any top level exceptions and ensure they are logged
         logger.exception(ex, exc_info=True)
