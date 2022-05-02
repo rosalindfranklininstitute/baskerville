@@ -105,76 +105,21 @@ try:
 
     ####################################################################################################################
 
-    # Must wait to import jax until after CUDA_VISIBLE_DEVICES is srt correctly
+    # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
     import jax
     import jax.numpy as jnp
     import numpy as np
 
-    # Create a JAX function to test local gpu
-    @jax.jit
-    def test_jax(xs):
-       return xs @ xs.T
+    logger.info(f'Initializing MPI')
 
-    # Create input array for this task instance
-    xs = jnp.arange(WORLD_SIZE) + WORLD_RANK
-    logger.info(f'BEFORE LOCAL JAX TEST | xs {xs.device()} {xs.shape} {xs}')
-
-    # Run the JAX function which operates locally
-    xs = test_jax(xs)
-    logger.info(f' AFTER LOCAL JAX TEST | xs {xs.device()} {xs.shape} {xs}')
-
-    # Log nvidia-smi to ensure task instances got the correct GPU bindings
-    for line in nvidia_smi().split('\n'):
-        logger.info(f'nvidia-smi | {line}')
-
-    ####################################################################################################################
-
-    logger.info(f'BEFORE MPI TEST')
-
-    # Initialize MPI
     from mpi4py import MPI
-    MPI_COMM_WORLD = MPI.COMM_WORLD
-
-    # Do a broadcast from each node to the other nodes to test communication
-    MPI.COMM_WORLD.barrier()
-    for idx in range(MPI.COMM_WORLD.Get_size()):
-
-        xs = -np.ones((MPI.COMM_WORLD.Get_size(),))
-        if idx == MPI.COMM_WORLD.Get_rank():
-            xs[:] = idx
-            logger.info(f'BCAST ROOT {xs}')
-
-        MPI.COMM_WORLD.barrier()
-        logger.info(f'BEFORE BCAST {xs}')
-
-        xs = MPI.COMM_WORLD.bcast(xs, root=idx)
-
-        logger.info(f' AFTER BCAST {xs}')
-
-    logger.info(f' AFTER MPI TEST')
-
-    ####################################################################################################################
-
-    # Must import mpi4jax after jax
-    # Use cloned JAX communicator exclusively for JAX to ensure no deadlocks from
-    # asynchronous execution compared to surrounding mpi4py communications.
     import mpi4jax
+    MPI_COMM_WORLD = MPI.COMM_WORLD
     JAX_COMM_WORLD = MPI_COMM_WORLD.Clone()
 
-    # TODO add pmap to example function to utilize multiple local GPUs (currently only uses GPU 0)
-    # Create a JAX function that will worth with mpi4jax without causing deadlocks
-    @jax.jit
-    def test_mpi4jax(xs):
-        xs_sum, _ = mpi4jax.allreduce(xs, op=MPI.SUM, comm=JAX_COMM_WORLD)
-        return xs_sum
 
-    # Create input array for this task instance
-    xs = jnp.arange(JAX_COMM_WORLD.Get_size()) + JAX_COMM_WORLD.Get_rank()
-    logger.info(f'BEFORE JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
 
-    # Run the JAX function which includes mpi4jax communication
-    xs = test_mpi4jax(xs)
-    logger.info(f' AFTER JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+    logger.info(f'Finalizing MPI')
 
     MPI_COMM_WORLD.barrier()
     MPI.Finalize()
