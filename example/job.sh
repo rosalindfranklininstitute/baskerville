@@ -31,7 +31,7 @@ export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:5011eed8
 
 # Point to activeloop hub datasets
 export TRAIN_DATASET_DIR="$PROJECT_DIR/mnist-train"
-export VAL_DATASET_DIR="$PROJECT_DIR/mnist-val"
+export VAL_DATASET_DIR="$PROJECT_DIR/mnist-test"
 
 # Execute the parallel job
 mpirun singularity run --nv $CONTAINER python example/job.py --log-nvsmi --train-dataset "$TRAIN_DATASET_DIR" --val-dataset "$VAL_DATASET_DIR"
