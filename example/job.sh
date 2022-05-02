@@ -30,8 +30,8 @@ export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
 export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:5011eed822e7af340c0a4120d2a03f383e8894e7dfd83d3e5219702514883349"
 
 # Point to activeloop hub datasets
-export TRAIN_DATASET_DIR="$PROJECT_DIR/imagenet-train"
-export VAL_DATASET_DIR="$PROJECT_DIR/imagenet-val"
+export TRAIN_DATASET_DIR="$PROJECT_DIR/mnist-train"
+export VAL_DATASET_DIR="$PROJECT_DIR/mnist-val"
 
 # Execute the parallel job
 mpirun singularity run --nv $CONTAINER python example/job.py --log-nvsmi --train-dataset "$TRAIN_DATASET_DIR" --val-dataset "$VAL_DATASET_DIR"
