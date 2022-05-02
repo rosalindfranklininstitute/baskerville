@@ -4,14 +4,20 @@ import logging
 import socket
 from absl import app, flags
 
-flags.DEFINE_string('train_dataset', help='')
-flags.DEFINE_string('val_dataset', help='')
-flags.DEFINE_integer('val_batch_size', 10000, help='')
+flags.DEFINE_string('train_dataset', None, help='')
+flags.mark_flag_as_required('train_dataset')
+flags.DEFINE_string('val_dataset', None, help='')
+flags.mark_flag_as_required('val_dataset')
+
 flags.DEFINE_integer('batch_size', 10000, help='')
+flags.DEFINE_integer('val_batch_size', 10000, help='')
+
 flags.DEFINE_float('learning_rate', 0.1, help='')
+
 flags.DEFINE_integer('random_seed', 42, help='')
 flags.DEFINE_integer('log_every', 100, help='')
 flags.DEFINE_integer('epochs', 90, help='')
+
 flags.DEFINE_bool('log_nvsmi', False, help='')
 flags.DEFINE_bool('log_env', False, help='')
 FLAGS = flags.FLAGS
