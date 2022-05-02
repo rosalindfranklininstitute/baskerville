@@ -31,9 +31,9 @@ export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:5011eed8
 
 # Pull data in on master node
 export TRAIN_DATASET_DIR="$PROJECT_DIR/mnist-train"
-export VAL_DATASET_DIR="$PROJECT_DIR/mnist-val"
+export VAL_DATASET_DIR="$PROJECT_DIR/mnist-test"
 singularity run --nv $CONTAINER python example/copy-dataset.py --src "hub://activeloop/mnist-train" --dst "$TRAIN_DATASET_DIR"
-singularity run --nv $CONTAINER python example/copy-dataset.py --src "hub://activeloop/mnist-val" --dst "$VAL_DATASET_DIR"
+singularity run --nv $CONTAINER python example/copy-dataset.py --src "hub://activeloop/mnist-test" --dst "$VAL_DATASET_DIR"
 
 # Execute the parallel job
 mpirun singularity run --nv $CONTAINER python example/job.py --log-nvsmi --train-dataset "$TRAIN_DATASET_DIR" --val-dataset "$VAL_DATASET_DIR"
