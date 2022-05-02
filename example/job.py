@@ -4,22 +4,23 @@ import logging
 import socket
 from absl import app, flags
 
+# Logging flags
+flags.DEFINE_bool('log_nvsmi', False, help='')
+flags.DEFINE_bool('log_env', False, help='')
+
+# Dataset flags
 flags.DEFINE_string('train_dataset', None, help='')
 flags.mark_flag_as_required('train_dataset')
 flags.DEFINE_string('val_dataset', None, help='')
 flags.mark_flag_as_required('val_dataset')
 
+# Training flags
 flags.DEFINE_integer('batch_size', 10000, help='')
 flags.DEFINE_integer('val_batch_size', 10000, help='')
-
 flags.DEFINE_float('learning_rate', 0.1, help='')
-
 flags.DEFINE_integer('random_seed', 42, help='')
 flags.DEFINE_integer('log_every', 100, help='')
 flags.DEFINE_integer('epochs', 90, help='')
-
-flags.DEFINE_bool('log_nvsmi', False, help='')
-flags.DEFINE_bool('log_env', False, help='')
 FLAGS = flags.FLAGS
 
 def task(argv, logger):
@@ -58,6 +59,9 @@ def task(argv, logger):
     MPI_COMM_WORLD.barrier()
     MPI.Finalize()
 
+########################################################################################################################
+# Everything below here is configuring logging output and selecting the correct GPUs for this task
+
 def main(argv):
 
     # Kill child processes on exit
@@ -69,8 +73,10 @@ def main(argv):
     # Decode the SLURM job information and the MPI rank of this task instance
     HOSTNAME = socket.gethostname()
     JOB_ID, JOB_NAME = os.environ['SLURM_JOB_ID'], os.environ['SLURM_JOB_NAME']
-    LOCAL_RANK, LOCAL_SIZE = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK']), int(os.environ['OMPI_COMM_WORLD_LOCAL_SIZE'])
-    WORLD_RANK, WORLD_SIZE = int(os.environ['OMPI_COMM_WORLD_RANK']), int(os.environ['OMPI_COMM_WORLD_SIZE'])
+    LOCAL_RANK, LOCAL_SIZE = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK']), \
+                             int(os.environ['OMPI_COMM_WORLD_LOCAL_SIZE'])
+    WORLD_RANK, WORLD_SIZE = int(os.environ['OMPI_COMM_WORLD_RANK']), \
+                             int(os.environ['OMPI_COMM_WORLD_SIZE'])
 
     # Dump env and nvidia-smi output for this task before trying to do anything incase of failure
     if FLAGS.log_env:
@@ -89,7 +95,7 @@ def main(argv):
             fp.flush()
 
         # Set a background process logging nvsmi in csv format in 1 second intervals
-        with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.nvsmi.csv', 'w') as fp:
+        with open(f'logs/nvsmi/{JOB_ID}-{WORLD_RANK:04d}.csv', 'w') as fp:
             subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--loop=1',
                               '--query-gpu=timestamp,uuid,power.draw,memory.used,memory.free,memory.total,'
                               'temperature.gpu,temperature.memory,utilization.gpu,utilization.memory'],
@@ -132,7 +138,8 @@ def main(argv):
     logger.debug(f'PATH {os.environ.get("PATH", "")}')
     logger.debug(f'LD_LIBRARY_PATH {os.environ.get("LD_LIBRARY_PATH", "")}')
 
-    CUDA_VISIBLE_DEVICES = sorted(map(int, filter(lambda y: len(y), os.environ.get('CUDA_VISIBLE_DEVICES', '').split(','))))
+    CUDA_VISIBLE_DEVICES = sorted(map(int, filter(lambda y: len(y),
+                           os.environ.get('CUDA_VISIBLE_DEVICES', '').split(','))))
     logger.info(f'CUDA_VISIBLE_DEVICES {CUDA_VISIBLE_DEVICES}')
     assert len(CUDA_VISIBLE_DEVICES) == len(set(CUDA_VISIBLE_DEVICES))
 
