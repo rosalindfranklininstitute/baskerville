@@ -11,8 +11,8 @@ function usage() {
   echo "                    Defaults to [job.sh]."
   echo
   echo "  -n JOB_NAME       Pattern to use for the job name and directory."
-  echo "                    Accepts format specifiers %r=REPO_NAME %t=UTC %c=COMMIT."
-  echo "                    Defaults to [%r/%t-%c]."
+  echo "                    Accepts format specifiers %r=REPO_NAME %t=UTC %c=COMMIT %C=SHORT_COMMIT."
+  echo "                    Defaults to [%r/%t-%C]."
   echo
   echo "  -l LOGS_PATTERN   Path to use for sbatch --output and --error."
   echo "                    Defaults to [logs/slurm/%j-%t]."
@@ -122,11 +122,12 @@ JOB_UTC="`date +%s`"
 
 # JOB_NAME for sbatch to force, expands format specifiers
 if [ -z "$SGIT_JOB_NAME" ]; then
-    SGIT_JOB_NAME="%r/%t-%c"
+    SGIT_JOB_NAME="%r/%t-%C"
 fi
 JOB_NAME="${SGIT_JOB_NAME/\%r/"$REPO_NAME"}"
 JOB_NAME="${JOB_NAME/\%t/"$JOB_UTC"}"
 JOB_NAME="${JOB_NAME/\%c/"$COMMIT"}"
+JOB_NAME="${JOB_NAME/\%C/"${COMMIT:0:6}"}"
 
 # JOB_DIR should be a unique empty directory for this specific job submission of a specific commit
 JOB_DIR="$ROOT_DIR/$JOB_NAME"
