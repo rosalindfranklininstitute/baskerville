@@ -55,7 +55,7 @@ def task(argv, logger, MPI):
     hub_ds_val   = hub.load(FLAGS.val_dataset,   read_only=True, memory_cache_size=FLAGS.val_dataset_mem_cache,   local_cache_size=FLAGS.val_dataset_dsk_cache)
 
     ds_train = hub_ds_train.tensorflow()
-    ds_train = ds_train.shuffle(hub_ds_train.shape[0], seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
+    ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
                 .map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
                 .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
                 .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
