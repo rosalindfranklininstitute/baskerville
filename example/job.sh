@@ -34,4 +34,4 @@ export TRAIN_DATASET_DIR="$PROJECT_DIR/mnist-train"
 export VAL_DATASET_DIR="$PROJECT_DIR/mnist-test"
 
 # Execute the parallel job
-mpirun singularity run --nv $CONTAINER python example/job.py --log-nvsmi --train-dataset "$TRAIN_DATASET_DIR" --val-dataset "$VAL_DATASET_DIR"
+mpirun singularity run --nv $CONTAINER python example/job.py --log_nvsmi --train_dataset "$TRAIN_DATASET_DIR" --val_dataset "$VAL_DATASET_DIR"
