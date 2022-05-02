@@ -117,7 +117,26 @@ try:
     MPI_COMM_WORLD = MPI.COMM_WORLD
     JAX_COMM_WORLD = MPI_COMM_WORLD.Clone()
 
+    import hub
+    import argparse
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--train-dataset', help='Train dataset.')
+    parser.add_argument('-v', '--val-dataset', help='Validation dataset.')
+    args = parser.parse_args()
+
+    ds_train = hub.load(args.train_dataset, read_only=True, memory_cache_size=8192, local_cache_size=150000)
+    ds_val   = hub.load(args.val_dataset,   read_only=True, memory_cache_size=8192, local_cache_size=150000)
+
+    X = ds_train.images[0].numpy()
+    Y = ds_train.labels[0].numpy()
+    logger.info(f'X train {X.shape} {X.dtype} {X.min()} {X.max()}')
+    logger.info(f'Y train {Y.shape} {Y.dtype}')
+
+    X = ds_val.images[0].numpy()
+    Y = ds_val.labels[0].numpy()
+    logger.info(f'X val {X.shape} {X.dtype} {X.min()} {X.max()}')
+    logger.info(f'Y val {Y.shape} {Y.dtype}')
 
     logger.info(f'Finalizing MPI')
 
