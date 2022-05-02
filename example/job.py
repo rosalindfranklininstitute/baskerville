@@ -5,8 +5,7 @@ import socket
 
 def _set_pdeathsig(sig=signal.SIGTERM):
     def fn():
-        libc = ctypes.CDLL("libc.so.6")
-        return libc.prctl(1, sig)
+        return ctypes.CDLL("libc.so.6").prctl(1, sig)
     return fn
 
 # Decode the SLURM job information and the MPI rank of this task instance
