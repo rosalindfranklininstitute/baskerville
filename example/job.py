@@ -57,6 +57,13 @@ def task(argv, logger, MPI):
                             memory_cache_size=FLAGS.train_dataset_mem_cache,
                             local_cache_size=FLAGS.train_dataset_dsk_cache)
 
+    @tf.function
+    def test_eager_tf(x):
+        return x @ x.T
+
+    x = test_eager_tf(tf.ones((100,)))
+    logger.debug(f'test eager tf {x.shape} {x.dtype}')
+
     def test_fn():
         yield from range(10)
 
