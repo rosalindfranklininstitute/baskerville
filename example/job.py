@@ -30,9 +30,10 @@ FLAGS = flags.FLAGS
 def task(argv, logger, MPI):
 
     # Must tell tensorflow not to utilize the GPUs
-    # logger.info(f'Importing Tensorflow')
-    # import tensorflow as tf
-    # tf.config.set_visible_devices([], 'GPU')
+    logger.info(f'Importing Tensorflow')
+    import tensorflow as tf
+    tf.config.set_visible_devices([], 'GPU')
+    logger.debug(f'Tensorflow version [{tf.__version__}]')
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
     logger.info(f'Importing JAX')
