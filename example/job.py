@@ -61,7 +61,7 @@ def task(argv, logger, MPI):
         yield from range(10)
 
     logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
-    ds_train = tf.data.Dataset.from_generator(test_fn, output_types=tf.int32) # hub_ds_train.tensorflow()
+    ds_train = tf.data.Dataset.from_generator(test_fn, output_types=tf.int32, output_shapes=(1,)) # hub_ds_train.tensorflow()
     # ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
     #                    .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
     #                    .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
