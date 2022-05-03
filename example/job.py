@@ -51,21 +51,30 @@ def task(argv, logger, MPI):
         return dict(image=image, label=label)
 
     import hub
-    hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True, memory_cache_size=FLAGS.train_dataset_mem_cache, local_cache_size=FLAGS.train_dataset_dsk_cache)
-    hub_ds_val   = hub.load(FLAGS.val_dataset,   read_only=True, memory_cache_size=FLAGS.val_dataset_mem_cache,   local_cache_size=FLAGS.val_dataset_dsk_cache)
 
-    ds_train = hub_ds_train.tensorflow(tensors=['images', 'labels'])
+    hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True,
+                            memory_cache_size=FLAGS.train_dataset_mem_cache,
+                            local_cache_size=FLAGS.train_dataset_dsk_cache)
+
+    logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
+    ds_train = hub_ds_train.tensorflow()
     ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
-                .map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
+                       .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
+                       .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
 
-    ds_val   = hub_ds_val.tensorflow(tensors=['images', 'labels'])
-    ds_val   = ds_val.map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
+    hub_ds_val = hub.load(FLAGS.val_dataset, read_only=True,
+                          memory_cache_size=FLAGS.val_dataset_mem_cache,
+                          local_cache_size=FLAGS.val_dataset_dsk_cache)
+
+    logger.info(f'Validation dataset [{FLAGS.val_dataset}] with length [{len(hub_ds_val)}]')
+    ds_val   = hub_ds_val.tensorflow()
+    ds_val   = ds_val.batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
+                     .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
 
     for index, batch in zip(range(5), iter(ds_train)):
+
+        print(batch)
+
         batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
         X = np.array(batch['image'])
         Y = np.array(batch['label'])
@@ -73,6 +82,9 @@ def task(argv, logger, MPI):
         logger.info(f'train label {Y.shape} {Y.dtype} {batch["label"]}')
 
     for index, batch in zip(range(5), iter(ds_val)):
+
+        print(batch)
+
         batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
         X = np.array(batch['image'])
         Y = np.array(batch['label'])
