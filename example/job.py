@@ -30,9 +30,9 @@ FLAGS = flags.FLAGS
 def task(argv, logger, MPI):
 
     # Must tell tensorflow not to utilize the GPUs
-    logger.info(f'Importing Tensorflow')
-    import tensorflow as tf
-    tf.config.set_visible_devices([], 'GPU')
+    # logger.info(f'Importing Tensorflow')
+    # import tensorflow as tf
+    # tf.config.set_visible_devices([], 'GPU')
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
     logger.info(f'Importing JAX')
@@ -45,10 +45,10 @@ def task(argv, logger, MPI):
     import mpi4jax
     JAX_COMM_WORLD = MPI.COMM_WORLD.Clone()
 
-    def preprocess_fn(input):
-        image, label = input
-        image = tf.cast(image, tf.float32) / 255.
-        return dict(image=image, label=label)
+    # def preprocess_fn(input):
+    #     image, label = input
+    #     image = tf.cast(image, tf.float32) / 255.
+    #     return dict(image=image, label=label)
 
     import hub
 
