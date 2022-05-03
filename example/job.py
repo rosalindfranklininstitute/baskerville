@@ -58,9 +58,9 @@ def task(argv, logger, MPI):
 
     logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
     ds_train = hub_ds_train.tensorflow()
-    ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
-                       .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
-                       .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
+    # ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
+    #                    .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
+    #                    .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
 
     hub_ds_val = hub.load(FLAGS.val_dataset, read_only=True,
                           memory_cache_size=FLAGS.val_dataset_mem_cache,
@@ -68,28 +68,28 @@ def task(argv, logger, MPI):
 
     logger.info(f'Validation dataset [{FLAGS.val_dataset}] with length [{len(hub_ds_val)}]')
     ds_val   = hub_ds_val.tensorflow()
-    ds_val   = ds_val.batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
-                     .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
+    # ds_val   = ds_val.batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
+    #                  .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
 
     for index, batch in zip(range(5), iter(ds_train)):
 
         print(batch)
 
-        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
-        X = np.array(batch['image'])
-        Y = np.array(batch['label'])
-        logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
-        logger.info(f'train label {Y.shape} {Y.dtype} {batch["label"]}')
+        # batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        # X = np.array(batch['image'])
+        # Y = np.array(batch['label'])
+        # logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
+        # logger.info(f'train label {Y.shape} {Y.dtype} {batch["label"]}')
 
     for index, batch in zip(range(5), iter(ds_val)):
 
         print(batch)
 
-        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
-        X = np.array(batch['image'])
-        Y = np.array(batch['label'])
-        logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
-        logger.info(f'val label {Y.shape} {Y.dtype} {batch["label"]}')
+        # batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        # X = np.array(batch['image'])
+        # Y = np.array(batch['label'])
+        # logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
+        # logger.info(f'val label {Y.shape} {Y.dtype} {batch["label"]}')
 
 ########################################################################################################################
 # Everything below here is configuring logging output and selecting the correct GPUs for this task
