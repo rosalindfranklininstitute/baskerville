@@ -57,7 +57,7 @@ def task(argv, logger, MPI):
                             local_cache_size=FLAGS.train_dataset_dsk_cache)
 
     logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
-    ds_train = hub_ds_train.tensorflow()
+    ds_train = tf.data.Dataset.range(10) #hub_ds_train.tensorflow()
     # ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
     #                    .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
     #                    .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
@@ -67,7 +67,7 @@ def task(argv, logger, MPI):
                           local_cache_size=FLAGS.val_dataset_dsk_cache)
 
     logger.info(f'Validation dataset [{FLAGS.val_dataset}] with length [{len(hub_ds_val)}]')
-    ds_val   = hub_ds_val.tensorflow()
+    ds_val   = tf.data.Dataset.range(10) #hub_ds_val.tensorflow()
     # ds_val   = ds_val.batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
     #                  .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
 
