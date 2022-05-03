@@ -59,7 +59,7 @@ def task(argv, logger, MPI):
 
     @tf.function
     def test_eager_tf(x):
-        return x @ x.T
+        return x @ x.transpose()
 
     x = test_eager_tf(tf.ones((100,)))
     logger.debug(f'test eager tf {x.shape} {x.dtype}')
