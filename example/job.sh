@@ -4,10 +4,10 @@
 #SBATCH --mail-user joss.whittle@rfi.ac.uk
 #SBATCH --mail-type ALL
 #SBATCH --time 20
-#SBATCH --nodes 1
+#SBATCH --nodes 2
 #SBATCH --ntasks-per-node 1
 #SBATCH --cpus-per-task 36
-#SBATCH --gpus-per-node 0
+#SBATCH --gpus-per-node 2
 
 # Load a bare-bones environment that will support CUDA enabled MPI within singularity containers
 module purge
@@ -29,7 +29,7 @@ export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
 # for a long time and you have pushed a newer version of the container in the meantime for future experiments
 export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:0c9fcac6a84d3c427e6b92489452afb46157995996524d40c1a4286c7ca6bb49"
 
+srun --mpi list
+
 # Execute the parallel job
-mpirun singularity run --nv $CONTAINER python example/job.py --log_nvsmi \
-                       --train_dataset "$PROJECT_DIR/mnist-train" \
-                       --val_dataset   "$PROJECT_DIR/mnist-test"
+srun singularity run --nv $CONTAINER python example/job.py --log_nvsmi
