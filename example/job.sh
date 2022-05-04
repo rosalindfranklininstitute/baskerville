@@ -18,11 +18,11 @@ module load OpenMPI/4.0.5-gcccuda-2020b
 # Enable verbose logging of job script commands
 set -x
 
-# Root directory for project storage
+# Root directory for project storage (update this to a directory you control)
 export PROJECT_DIR="/bask/projects/f/ffnr0871-rfi-test/pje39613"
 
 # Place singularity cache dir in project storage since /home/ is limited to 20GB per user
-# Singularity can use up a LOT of cache space when converti/bask/projects/f/ffnr0871-rfi-test/pje39613ng OCI images to singularity images!
+# Singularity can use up a LOT of cache space when converting OCI images to singularity images!
 export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
 
 # Use container uri with hash digest so that the correct container version gets used even if the job queues
