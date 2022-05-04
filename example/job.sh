@@ -29,7 +29,5 @@ export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
 # for a long time and you have pushed a newer version of the container in the meantime for future experiments
 export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:0c9fcac6a84d3c427e6b92489452afb46157995996524d40c1a4286c7ca6bb49"
 
-srun --mpi list
-
 # Execute the parallel job
-srun --mpi=cray_shasta singularity run --nv $CONTAINER python example/job.py --log_nvsmi
+mpirun singularity run --nv $CONTAINER python example/job.py --log_nvsmi

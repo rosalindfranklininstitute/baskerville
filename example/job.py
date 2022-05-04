@@ -46,7 +46,10 @@ def main(argv):
     # Decode the SLURM job information and the MPI rank of this task instance
     HOSTNAME = socket.gethostname()
     JOB_ID, JOB_NAME = os.environ['SLURM_JOB_ID'], os.environ['SLURM_JOB_NAME']
-    WORLD_RANK, WORLD_SIZE = int(os.environ['SLURM_PROCID']), int(os.environ['SLURM_NTASKS'])
+    LOCAL_RANK, LOCAL_SIZE = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK']), \
+                             int(os.environ['OMPI_COMM_WORLD_LOCAL_SIZE'])
+    WORLD_RANK, WORLD_SIZE = int(os.environ['OMPI_COMM_WORLD_RANK']), \
+                             int(os.environ['OMPI_COMM_WORLD_SIZE'])
 
     # Dump env and nvidia-smi output for this task before trying to do anything incase of failure
     if FLAGS.log_env:
@@ -76,6 +79,7 @@ def main(argv):
         def filter(self, record):
             record.hostname = HOSTNAME
             record.job_id, record.job_name = JOB_ID, JOB_NAME
+            record.local_rank, record.local_size = LOCAL_RANK, LOCAL_SIZE
             record.world_rank, record.world_size = WORLD_RANK, WORLD_SIZE
             return True
 
@@ -89,6 +93,7 @@ def main(argv):
     # Format the logging to include the SLURM job and MPI ranks
     formatter = logging.Formatter('%(asctime)s | %(hostname)s | %(job_id)s | '
                                   'W %(world_rank)03d:%(world_size)03d | '
+                                  'L %(local_rank)03d:%(local_size)03d | '
                                   '%(levelname)10s | %(message)s')
 
     # Mirror logging to stdout
