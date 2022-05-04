@@ -30,7 +30,7 @@ FLAGS = flags.FLAGS
 
 def task(argv, logger, MPI):
 
-    logger.debug(f'Tensorflow version [{tf.__version__}]')
+    logger.debug(f'Tensorflow version: [{tf.__version__}]')
     logger.debug(f'Tensorflow GPUs:', tf.config.list_physical_devices('GPU'))
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
@@ -45,10 +45,6 @@ def task(argv, logger, MPI):
     import mpi4jax
     JAX_COMM_WORLD = MPI.COMM_WORLD.Clone()
 
-    def preprocess_fn(input):
-        images = tf.cast(input['images'], tf.float32) / 255.
-        return dict(images=images, labels=input['labels'])
-
     import hub
 
     hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True,
@@ -57,20 +53,20 @@ def task(argv, logger, MPI):
 
     logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
     ds_train = hub_ds_train.tensorflow()
-    ds_train = ds_train.map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
-                .shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
-                .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
+                       .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
+                       .batch(jax.local_device_count(), drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
+                       .prefetch(tf.data.AUTOTUNE)
 
     hub_ds_val = hub.load(FLAGS.val_dataset, read_only=True,
                           memory_cache_size=FLAGS.val_dataset_mem_cache,
                           local_cache_size=FLAGS.val_dataset_dsk_cache)
 
     logger.info(f'Validation dataset [{FLAGS.val_dataset}] with length [{len(hub_ds_val)}]')
-    ds_val   = hub_ds_val.tensorflow()
-    ds_val   = ds_val.map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
-                .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_val = hub_ds_val.tensorflow()
+    ds_val = ds_val.batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
+                   .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
+                   .prefetch(tf.data.AUTOTUNE)
 
     for index, batch in zip(range(5), iter(ds_train)):
 
