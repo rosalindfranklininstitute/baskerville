@@ -1,9 +1,10 @@
-import os, sys, time, signal, ctypes
+import os, sys, time, signal, ctypes, io
 import subprocess
 import logging
 import socket
 from absl import app, flags
 import tensorflow as tf
+import pandas as pd
 
 # Logging flags
 flags.DEFINE_bool('log_nvsmi', False, help='')
@@ -206,6 +207,20 @@ def log_nvidia_smi(logger):
     proc = subprocess.Popen(['/usr/bin/nvidia-smi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     for line in proc.communicate()[0].decode("utf-8").strip().split('\n'):
         logger.info(f'nvidia-smi | {line}')
+
+    logger.info(f'nvidia-smi |')
+
+    proc = subprocess.Popen(['/usr/bin/nvidia-smi', '--format=csv', '--query-gpu=uuid,name'],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc_stdout = proc.communicate()[0].decode("utf-8").strip()
+
+    try:
+        for line in str(pd.read_csv(io.StringIO(proc_stdout))).split('\n'):
+            logger.info(f'nvidia-smi | {line}')
+    except Exception as ex:
+        for line in proc_stdout.split('\n'):
+            logger.info(f'nvidia-smi | {line}')
+        logger.exception(ex, exc_info=True)
 
 if __name__ == "__main__":
     app.run(main)
