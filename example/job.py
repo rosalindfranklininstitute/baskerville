@@ -32,8 +32,20 @@ def task(argv, logger, MPI):
     # Must tell tensorflow not to utilize the GPUs
     logger.info(f'Importing Tensorflow')
     import tensorflow as tf
-    tf.config.set_visible_devices([], 'GPU')
     logger.debug(f'Tensorflow version [{tf.__version__}]')
+
+    @tf.function
+    def test_eager_tf(x):
+        return x @ tf.transpose(x)
+
+    x = test_eager_tf(tf.ones((100, 1)))
+    print(f'test eager tf {x.shape} {x.dtype}')
+
+    def test_fn():
+        yield from range(10)
+
+    ds_train = tf.data.Dataset.from_generator(test_fn, output_types=tf.int32, output_shapes=())
+    print(f'{next(iter(ds_train))}')
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
     logger.info(f'Importing JAX')
@@ -51,11 +63,11 @@ def task(argv, logger, MPI):
     #     image = tf.cast(image, tf.float32) / 255.
     #     return dict(image=image, label=label)
 
-    import hub
+    # import hub
 
-    hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True,
-                            memory_cache_size=FLAGS.train_dataset_mem_cache,
-                            local_cache_size=FLAGS.train_dataset_dsk_cache)
+    # hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True,
+    #                         memory_cache_size=FLAGS.train_dataset_mem_cache,
+    #                         local_cache_size=FLAGS.train_dataset_dsk_cache)
 
     @tf.function
     def test_eager_tf(x):
@@ -67,7 +79,7 @@ def task(argv, logger, MPI):
     def test_fn():
         yield from range(10)
 
-    logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
+    # logger.info(f'Training dataset [{FLAGS.train_dataset}] with length [{len(hub_ds_train)}]')
     ds_train = tf.data.Dataset.from_generator(test_fn, output_types=tf.int32, output_shapes=()) # hub_ds_train.tensorflow()
     # ds_train = ds_train.shuffle(len(hub_ds_train), seed=FLAGS.train_dataset_shuffle_seed, reshuffle_each_iteration=True) \
     #                    .batch(FLAGS.train_batch_size, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE) \
@@ -75,11 +87,11 @@ def task(argv, logger, MPI):
 
     logger.debug(f'{next(iter(ds_train))}')
 
-    hub_ds_val = hub.load(FLAGS.val_dataset, read_only=True,
-                          memory_cache_size=FLAGS.val_dataset_mem_cache,
-                          local_cache_size=FLAGS.val_dataset_dsk_cache)
+    # hub_ds_val = hub.load(FLAGS.val_dataset, read_only=True,
+    #                       memory_cache_size=FLAGS.val_dataset_mem_cache,
+    #                       local_cache_size=FLAGS.val_dataset_dsk_cache)
 
-    logger.info(f'Validation dataset [{FLAGS.val_dataset}] with length [{len(hub_ds_val)}]')
+    # logger.info(f'Validation dataset [{FLAGS.val_dataset}] with length [{len(hub_ds_val)}]')
     ds_val   = tf.data.Dataset.range(10) #hub_ds_val.tensorflow()
     # ds_val   = ds_val.batch(FLAGS.val_batch_size, drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
     #                  .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE)
