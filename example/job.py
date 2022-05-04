@@ -46,8 +46,8 @@ def task(argv, logger, MPI):
     JAX_COMM_WORLD = MPI.COMM_WORLD.Clone()
 
     def preprocess_fn(input):
-        image = tf.cast(input['image'], tf.float32) / 255.
-        return dict(image=image, label=input['label'])
+        image = tf.cast(input['images'], tf.float32) / 255.
+        return dict(image=image, label=input['labels'])
 
     import hub
 
