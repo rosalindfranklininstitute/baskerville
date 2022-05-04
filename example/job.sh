@@ -27,7 +27,7 @@ export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
 
 # Use container uri with hash digest so that the correct container version gets used even if the job queues
 # for a long time and you have pushed a newer version of the container in the meantime for future experiments
-export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:0c9fcac6a84d3c427e6b92489452afb46157995996524d40c1a4286c7ca6bb49"
+export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:b9658e51e0ee9f901f9f01eecd5457cfc5d965c7ef3e872b3b82cfd502c56fb4"
 
 # Execute the parallel job
 mpirun singularity run --nv $CONTAINER python example/job.py --log_nvsmi \
