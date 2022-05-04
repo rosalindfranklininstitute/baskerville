@@ -32,4 +32,4 @@ export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:0c9fcac6
 srun --mpi list
 
 # Execute the parallel job
-srun --mpi singularity run --nv $CONTAINER python example/job.py --log_nvsmi
+srun --mpi=none singularity run --nv $CONTAINER python example/job.py --log_nvsmi
