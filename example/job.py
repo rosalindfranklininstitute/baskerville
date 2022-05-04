@@ -74,7 +74,7 @@ def task(argv, logger, MPI):
 
     for index, batch in zip(range(5), iter(ds_train)):
 
-        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
         X = np.array(batch['image'])
         Y = np.array(batch['label'])
         logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
@@ -82,7 +82,7 @@ def task(argv, logger, MPI):
 
     for index, batch in zip(range(5), iter(ds_val)):
 
-        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
         X = np.array(batch['image'])
         Y = np.array(batch['label'])
         logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()}')
