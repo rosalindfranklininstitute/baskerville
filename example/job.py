@@ -4,6 +4,25 @@ import logging
 import socket
 from absl import app, flags
 
+# Must tell tensorflow not to utilize the GPUs
+print(f'Importing Tensorflow')
+import tensorflow as tf
+print(f'Tensorflow version [{tf.__version__}]')
+print(f'Tensorflow GPUs:', tf.config.list_physical_devices('GPU'))
+
+@tf.function
+def test_eager_tf(x):
+    return x @ tf.transpose(x)
+
+x = test_eager_tf(tf.ones((100, 1)))
+print(f'test eager tf {x.shape} {x.dtype}')
+
+def test_fn():
+    yield from range(10)
+
+ds_train = tf.data.Dataset.from_generator(test_fn, output_types=tf.int32, output_shapes=())
+print(f'{next(iter(ds_train))}')
+
 # Logging flags
 flags.DEFINE_bool('log_nvsmi', False, help='')
 flags.DEFINE_bool('log_env', False, help='')
@@ -28,24 +47,6 @@ flags.DEFINE_integer('epochs', 90, help='')
 FLAGS = flags.FLAGS
 
 def task(argv, logger, MPI):
-
-    # Must tell tensorflow not to utilize the GPUs
-    logger.info(f'Importing Tensorflow')
-    import tensorflow as tf
-    logger.debug(f'Tensorflow version [{tf.__version__}]')
-
-    @tf.function
-    def test_eager_tf(x):
-        return x @ tf.transpose(x)
-
-    x = test_eager_tf(tf.ones((100, 1)))
-    print(f'test eager tf {x.shape} {x.dtype}')
-
-    def test_fn():
-        yield from range(10)
-
-    ds_train = tf.data.Dataset.from_generator(test_fn, output_types=tf.int32, output_shapes=())
-    print(f'{next(iter(ds_train))}')
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
     logger.info(f'Importing JAX')
