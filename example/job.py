@@ -31,7 +31,9 @@ FLAGS = flags.FLAGS
 def task(argv, logger, MPI):
 
     logger.debug(f'Tensorflow version: [{tf.__version__}]')
-    logger.debug(f'Tensorflow GPUs:', tf.config.list_physical_devices('GPU'))
+    TF_LOCAL_DEVICES = tf.config.list_physical_devices('GPU')
+    logger.debug(f'Tensorflow GPUs:', TF_LOCAL_DEVICES)
+    assert len(TF_LOCAL_DEVICES) == 0
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
     logger.info(f'Importing JAX')
@@ -40,6 +42,7 @@ def task(argv, logger, MPI):
     import numpy as np
     JAX_LOCAL_DEVICES = jax.local_devices()
     logger.debug(f'JAX Devices:', JAX_LOCAL_DEVICES)
+    assert len(JAX_LOCAL_DEVICES) > 0
 
     logger.info(f'Importing mpi4jax')
     import mpi4jax
@@ -69,16 +72,18 @@ def task(argv, logger, MPI):
                    .prefetch(tf.data.AUTOTUNE)
 
     for index, batch in zip(range(5), iter(ds_train)):
-
+        # Convert double batched TF tensors into a list of numpy arrays, then a sharded JAX array over the local devices
         batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
+
         X = np.array(batch['images'])
         Y = np.array(batch['labels'])
         logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
         logger.info(f'train label {Y.shape} {Y.dtype}')
 
     for index, batch in zip(range(5), iter(ds_val)):
-
+        # Convert double batched TF tensors into a list of numpy arrays, then a sharded JAX array over the local devices
         batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
+
         X = np.array(batch['images'])
         Y = np.array(batch['labels'])
         logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()}')
