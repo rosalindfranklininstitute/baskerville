@@ -14,12 +14,12 @@ flags.DEFINE_string('train_dataset', None, help='', required=True)
 flags.DEFINE_integer('train_dataset_mem_cache', 8192, help='', lower_bound=0)
 flags.DEFINE_integer('train_dataset_dsk_cache', 150000, help='', lower_bound=0)
 flags.DEFINE_integer('train_dataset_shuffle_seed', 42, help='', lower_bound=0)
-flags.DEFINE_integer('train_batch_size', 10000, help='')
+flags.DEFINE_integer('train_batch_size', 128, help='')
 
 flags.DEFINE_string('val_dataset', None, help='', required=True)
 flags.DEFINE_integer('val_dataset_mem_cache', 8192, help='', lower_bound=0)
 flags.DEFINE_integer('val_dataset_dsk_cache', 150000, help='', lower_bound=0)
-flags.DEFINE_integer('val_batch_size', 10000, help='')
+flags.DEFINE_integer('val_batch_size', 128, help='')
 
 # Training flags
 flags.DEFINE_float('learning_rate', 0.1, help='')
@@ -75,16 +75,16 @@ def task(argv, logger, MPI):
     for index, batch in zip(range(5), iter(ds_train)):
 
         batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
-        X = np.array(batch['image'])
-        Y = np.array(batch['label'])
+        X = np.array(batch['images'])
+        Y = np.array(batch['labels'])
         logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
         logger.info(f'train label {Y.shape} {Y.dtype}')
 
     for index, batch in zip(range(5), iter(ds_val)):
 
         batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
-        X = np.array(batch['image'])
-        Y = np.array(batch['label'])
+        X = np.array(batch['images'])
+        Y = np.array(batch['labels'])
         logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()}')
         logger.info(f'val label {Y.shape} {Y.dtype}')
 
