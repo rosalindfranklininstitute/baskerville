@@ -46,8 +46,8 @@ def task(argv, logger, MPI):
     JAX_COMM_WORLD = MPI.COMM_WORLD.Clone()
 
     def preprocess_fn(input):
-        image = tf.cast(input['images'], tf.float32) / 255.
-        return dict(image=image, label=input['labels'])
+        images = tf.cast(input['images'], tf.float32) / 255.
+        return dict(images=images, labels=input['labels'])
 
     import hub
 
@@ -74,23 +74,19 @@ def task(argv, logger, MPI):
 
     for index, batch in zip(range(5), iter(ds_train)):
 
-        logger.debug(f'batch [{index}] = {batch}')
-
-        # batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
-        # X = np.array(batch['image'])
-        # Y = np.array(batch['label'])
-        # logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
-        # logger.info(f'train label {Y.shape} {Y.dtype} {batch["label"]}')
+        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        X = np.array(batch['image'])
+        Y = np.array(batch['label'])
+        logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
+        logger.info(f'train label {Y.shape} {Y.dtype}')
 
     for index, batch in zip(range(5), iter(ds_val)):
 
-        logger.debug(f'batch [{index}] = {batch}')
-
-        # batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
-        # X = np.array(batch['image'])
-        # Y = np.array(batch['label'])
-        # logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()} {batch["image"]}')
-        # logger.info(f'val label {Y.shape} {Y.dtype} {batch["label"]}')
+        batch = jax.tree_map(lambda x: jax.device_put_sharded(x.numpy(), JAX_LOCAL_DEVICES), batch)
+        X = np.array(batch['image'])
+        Y = np.array(batch['label'])
+        logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()}')
+        logger.info(f'val label {Y.shape} {Y.dtype}')
 
 ########################################################################################################################
 # Everything below here is configuring logging output and selecting the correct GPUs for this task
