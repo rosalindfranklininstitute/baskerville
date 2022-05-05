@@ -33,7 +33,7 @@ def task(argv, logger, MPI):
 
     logger.debug(f'Tensorflow version: [{tf.__version__}]')
     TF_LOCAL_DEVICES = tf.config.list_physical_devices('GPU')
-    logger.debug(f'Tensorflow GPUs:', TF_LOCAL_DEVICES)
+    logger.debug(f'Tensorflow GPUs: {TF_LOCAL_DEVICES}')
     assert len(TF_LOCAL_DEVICES) == 0
 
     # Must wait to import jax until after CUDA_VISIBLE_DEVICES is set correctly
@@ -41,8 +41,9 @@ def task(argv, logger, MPI):
     import jax
     import jax.numpy as jnp
     import numpy as np
+
     JAX_LOCAL_DEVICES = jax.local_devices()
-    logger.debug(f'JAX Devices:', JAX_LOCAL_DEVICES)
+    logger.debug(f'JAX Devices: {list(map(str, JAX_LOCAL_DEVICES))}')
     assert len(JAX_LOCAL_DEVICES) > 0
 
     logger.info(f'Importing mpi4jax')
@@ -85,21 +86,17 @@ def task(argv, logger, MPI):
 
     for index, batch in zip(range(5), double_buffer_dataset(ds_train)):
 
-        logger.info(batch)
-
         X = np.array(batch['images'])
         Y = np.array(batch['labels'])
-        logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
-        logger.info(f'train label {Y.shape} {Y.dtype}')
+        logger.debug(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
+        logger.debug(f'train label {Y.shape} {Y.dtype}')
 
     for index, batch in zip(range(5), double_buffer_dataset(ds_val)):
 
-        logger.info(batch)
-
         X = np.array(batch['images'])
         Y = np.array(batch['labels'])
-        logger.info(f'val image {X.shape} {X.dtype} {X.min()} {X.max()}')
-        logger.info(f'val label {Y.shape} {Y.dtype}')
+        logger.debug(f'val image {X.shape} {X.dtype} {X.min()} {X.max()}')
+        logger.debug(f'val label {Y.shape} {Y.dtype}')
 
 ########################################################################################################################
 # Everything below here is configuring logging output and selecting the correct GPUs for this task
@@ -196,16 +193,16 @@ def main(argv):
     log_nvidia_smi(logger)
 
     try:
-        logger.debug(f'Initializing MPI')
+        logger.info(f'Initializing MPI')
         from mpi4py import MPI
         MPI.COMM_WORLD.barrier()
 
-        logger.debug('Starting task...')
+        logger.info('Starting task...')
         task(argv=argv, logger=logger, MPI=MPI)
         time.sleep(5)
-        logger.debug('Halting task...')
+        logger.info('Halting task...')
 
-        logger.debug(f'Finalizing MPI')
+        logger.info(f'Finalizing MPI')
         MPI.COMM_WORLD.barrier()
         MPI.Finalize()
 
