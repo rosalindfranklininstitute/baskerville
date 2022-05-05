@@ -19,7 +19,7 @@ module load OpenMPI/4.0.5-gcccuda-2020b
 set -x
 
 # Compile the job
-mpicc job.c -o job
+mpicc example/job.c -o example/job
 
 # Execute the parallel job
-srun job
+srun example/job
