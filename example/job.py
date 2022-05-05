@@ -51,6 +51,17 @@ def task(argv, logger, MPI):
 
     import hub
 
+    def double_buffer_dataset(ds):
+        batch = None
+        for next_batch in ds:
+            assert next_batch is not None
+            next_batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), next_batch)
+            if batch is not None:
+                yield batch
+            batch = next_batch
+        if batch is not None:
+            yield batch
+
     hub_ds_train = hub.load(FLAGS.train_dataset, read_only=True,
                             memory_cache_size=FLAGS.train_dataset_mem_cache,
                             local_cache_size=FLAGS.train_dataset_dsk_cache)
@@ -72,18 +83,18 @@ def task(argv, logger, MPI):
                    .batch(jax.local_device_count(), drop_remainder=False, num_parallel_calls=tf.data.AUTOTUNE) \
                    .prefetch(tf.data.AUTOTUNE)
 
-    for index, batch in zip(range(5), iter(ds_train)):
-        # Convert double batched TF tensors into a list of numpy arrays, then a sharded JAX array over the local devices
-        batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
+    for index, batch in zip(range(5), double_buffer_dataset(ds_train)):
+
+        logger.info(batch)
 
         X = np.array(batch['images'])
         Y = np.array(batch['labels'])
         logger.info(f'train image {X.shape} {X.dtype} {X.min()} {X.max()}')
         logger.info(f'train label {Y.shape} {Y.dtype}')
 
-    for index, batch in zip(range(5), iter(ds_val)):
-        # Convert double batched TF tensors into a list of numpy arrays, then a sharded JAX array over the local devices
-        batch = jax.tree_map(lambda x: jax.device_put_sharded(list(x.numpy()), JAX_LOCAL_DEVICES), batch)
+    for index, batch in zip(range(5), double_buffer_dataset(ds_val)):
+
+        logger.info(batch)
 
         X = np.array(batch['images'])
         Y = np.array(batch['labels'])
