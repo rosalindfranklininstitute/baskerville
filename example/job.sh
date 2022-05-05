@@ -4,8 +4,8 @@
 #SBATCH --mail-user joss.whittle@rfi.ac.uk
 #SBATCH --mail-type ALL
 #SBATCH --time 2
-#SBATCH --nodes 1
-#SBATCH --ntasks-per-node 8
+#SBATCH --nodes 2
+#SBATCH --ntasks-per-node 2
 #SBATCH --cpus-per-task 1
 #SBATCH --gpus-per-node 0
 
@@ -22,4 +22,4 @@ set -x
 mpicc example/job.c -o example/job
 
 # Execute the parallel job
-mpirun example/job
+srun example/job
