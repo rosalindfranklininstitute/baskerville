@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <mpi.h>
 
 #define MAX_HEADER_LEN 256
@@ -15,7 +16,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(comm_local, &LOCAL_SIZE);
 
     char LOG_HEADER[MAX_HEADER_LEN];
-    sprintf(&LOG_HEADER, "W %03d:%03d | L %03d:%03d", WORLD_RANK, WORLD_SIZE, LOCAL_RANK, LOCAL_SIZE);
+    sprintf(LOG_HEADER, "W %03d:%03d | L %03d:%03d", WORLD_RANK, WORLD_SIZE, LOCAL_RANK, LOCAL_SIZE);
 
     printf("%s | Starting...\n", LOG_HEADER);
     MPI_Barrier(MPI_COMM_WORLD);
