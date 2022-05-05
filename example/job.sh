@@ -22,4 +22,4 @@ set -x
 mpicc example/job.c -o example/job
 
 # Execute the parallel job
-srun --mpi=none example/job
+srun --mpi=pmi2 example/job
