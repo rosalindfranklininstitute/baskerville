@@ -5,8 +5,8 @@
 #SBATCH --mail-type ALL
 #SBATCH --time 2
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node 1
-#SBATCH --cpus-per-task 36
+#SBATCH --ntasks-per-node 8
+#SBATCH --cpus-per-task 1
 #SBATCH --gpus-per-node 0
 
 # Load a bare-bones environment that will support CUDA enabled MPI
