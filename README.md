@@ -11,7 +11,7 @@ sgit -d ~/jobs -r git@github.com:rosalindfranklininstitute/baskerville.git \
      -j example/job.sh
 ```
 
-The above command will create a directory `~/jobs/baskerville/d74379faf9ca56e76c7c4b7ea49305275859519b/<UTC>` and submit `example/job.sh` to sbatch with job name `baskerville/d74379faf9ca56e76c7c4b7ea49305275859519b/<UTC>`.
+The above command will create a directory `~/jobs/baskerville/<UTC>-d74379` and submit `example/job.sh` to sbatch with job name `baskerville/<UTC>-d74379`.
 
 ---
 
