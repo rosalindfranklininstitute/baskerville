@@ -30,4 +30,4 @@ export SINGULARITY_CACHEDIR="$PROJECT_DIR/.singularity-cache"
 export CONTAINER="docker://quay.io/rosalindfranklininstitute/jax@sha256:fdc625b3e42a016d2fe4ce53d3afa281377053df3047f36c3466112a4e9bd98a"
 
 # Execute the parallel job
-srun singularity run --nv $CONTAINER python example/job.py --log_nvsmi --log_env
+mpirun singularity run --nv $CONTAINER python example/job.py --log_nvsmi --log_env
