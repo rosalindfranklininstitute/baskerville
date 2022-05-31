@@ -58,7 +58,7 @@ def task(argv, logger, MPI):
     import mpi4jax
     # Use cloned JAX communicator exclusively for JAX to ensure no deadlocks from
     # asynchronous execution compared to surrounding mpi4py communications.
-    JAX_COMM_WORLD = MPI_COMM_WORLD.Clone()
+    JAX_COMM_WORLD = MPI.COMM_WORLD.Clone()
 
     # Create a JAX function that will worth with mpi4jax without causing deadlocks
     @jax.jit
