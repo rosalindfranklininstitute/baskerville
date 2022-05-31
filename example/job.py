@@ -32,6 +32,82 @@ def task(argv, logger, MPI):
 
     logger.info(f' AFTER MPI TEST')
 
+    import jax
+    import jax.numpy as jnp
+
+    JAX_LOCAL_DEVICES = jax.local_devices()
+    logger.debug(f'JAX Devices: {list(map(str, JAX_LOCAL_DEVICES))}')
+    assert len(JAX_LOCAL_DEVICES) > 0
+
+    # Create a JAX function to test local gpus
+    @jax.jit
+    def test_jax(xs):
+        return xs @ xs.T
+
+    # Create input array for this task instance
+    xs = jnp.arange(MPI.COMM_WORLD.Get_size()) + MPI.COMM_WORLD.Get_rank()
+    logger.info(f'BEFORE LOCAL JAX TEST | xs {xs.device()} {xs.shape} {xs}')
+
+    # Run the JAX function which operates locally
+    xs = test_jax(xs)
+    logger.info(f' AFTER LOCAL JAX TEST | xs {xs.device()} {xs.shape} {xs}')
+
+    log_nvidia_smi(logger)
+
+    # Must import mpi4jax after jax
+    import mpi4jax
+    # Use cloned JAX communicator exclusively for JAX to ensure no deadlocks from
+    # asynchronous execution compared to surrounding mpi4py communications.
+    JAX_COMM_WORLD = MPI_COMM_WORLD.Clone()
+
+    # Create a JAX function that will worth with mpi4jax without causing deadlocks
+    @jax.jit
+    def test_mpi4jax(xs):
+        xs_sum, _ = mpi4jax.allreduce(xs, op=MPI.SUM, comm=JAX_COMM_WORLD)
+        return xs_sum
+
+    # Create input array for this task instance
+    xs = jnp.arange(JAX_COMM_WORLD.Get_size()) + JAX_COMM_WORLD.Get_rank()
+    logger.info(f'BEFORE JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+
+    # Run the JAX function which includes mpi4jax communication
+    xs = test_mpi4jax(xs)
+    logger.info(f' AFTER JAX ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+
+    log_nvidia_smi(logger)
+
+    # Create a JAX function to test local gpus
+    @jax.pmap
+    def test_jax_pmap(xs):
+        return xs @ xs.T
+
+    # Create input array for this task instance
+    xs = jnp.arange(MPI.COMM_WORLD.Get_size()) + MPI.COMM_WORLD.Get_rank()
+    xs = jax.device_put_replicated(xs, JAX_LOCAL_DEVICES)
+    logger.info(f'BEFORE LOCAL JAX PMAP TEST | xs {xs.device()} {xs.shape} {xs}')
+
+    # Run the JAX function which operates locally
+    xs = test_jax_pmap(xs)
+    logger.info(f' AFTER LOCAL JAX PMAP TEST | xs {xs.device()} {xs.shape} {xs}')
+
+    log_nvidia_smi(logger)
+
+    # Create a JAX function that will worth with mpi4jax without causing deadlocks
+    @jax.pmap
+    def test_mpi4jax_pmap(xs):
+        xs_sum, _ = mpi4jax.allreduce(xs, op=MPI.SUM, comm=JAX_COMM_WORLD)
+        return xs_sum
+
+    # Create input array for this task instance
+    xs = jnp.arange(JAX_COMM_WORLD.Get_size()) + JAX_COMM_WORLD.Get_rank()
+    xs = jax.device_put_replicated(xs, JAX_LOCAL_DEVICES)
+    logger.info(f'BEFORE JAX PMAP ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+
+    # Run the JAX function which includes mpi4jax communication
+    xs = test_mpi4jax_pmap(xs)
+    logger.info(f' AFTER JAX PMAP ALL-REDUCE-SUM | xs {xs.device()} {xs.shape} {xs}')
+
+    log_nvidia_smi(logger)
 
 ########################################################################################################################
 # Everything below here is configuring logging output
