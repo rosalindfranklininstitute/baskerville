@@ -84,11 +84,11 @@ def task(argv, logger, MPI):
     # Create input array for this task instance
     xs = jnp.arange(MPI.COMM_WORLD.Get_size()) + MPI.COMM_WORLD.Get_rank()
     xs = jax.device_put_replicated(xs, JAX_LOCAL_DEVICES)
-    logger.info(f'BEFORE LOCAL JAX PMAP TEST | xs {xs.devices()} {xs.shape} {xs}')
+    logger.info(f'BEFORE LOCAL JAX PMAP TEST | xs {xs.shape} {xs}')
 
     # Run the JAX function which operates locally
     xs = test_jax_pmap(xs)
-    logger.info(f' AFTER LOCAL JAX PMAP TEST | xs {xs.devices()} {xs.shape} {xs}')
+    logger.info(f' AFTER LOCAL JAX PMAP TEST | xs {xs.shape} {xs}')
 
     log_nvidia_smi(logger)
 
@@ -101,11 +101,11 @@ def task(argv, logger, MPI):
     # Create input array for this task instance
     xs = jnp.arange(JAX_COMM_WORLD.Get_size()) + JAX_COMM_WORLD.Get_rank()
     xs = jax.device_put_replicated(xs, JAX_LOCAL_DEVICES)
-    logger.info(f'BEFORE JAX PMAP ALL-REDUCE-SUM | xs {xs.devices()} {xs.shape} {xs}')
+    logger.info(f'BEFORE JAX PMAP ALL-REDUCE-SUM | xs {xs.shape} {xs}')
 
     # Run the JAX function which includes mpi4jax communication
     xs = test_mpi4jax_pmap(xs)
-    logger.info(f' AFTER JAX PMAP ALL-REDUCE-SUM | xs {xs.devices()} {xs.shape} {xs}')
+    logger.info(f' AFTER JAX PMAP ALL-REDUCE-SUM | xs {xs.shape} {xs}')
 
     log_nvidia_smi(logger)
 
